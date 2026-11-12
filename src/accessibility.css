@@ -1,0 +1,36 @@
+:root{--focus-color:#164f94;--control-border:#7b8da4}
+.skip-link{position:fixed;top:8px;left:12px;z-index:200;display:block;padding:12px 18px;background:white;color:#173f6e;border:2px solid #173f6e;border-radius:6px;transform:translateY(-160%);font-size:16px;font-weight:600}
+.skip-link:focus{transform:none}
+html{scroll-padding-top:190px;scroll-padding-bottom:70px}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--focus-color)!important;outline-offset:3px}
+.topbar button:focus-visible{outline-color:white!important}
+.signature-upload:focus-within{outline:3px solid var(--focus-color);outline-offset:3px}
+.field input,.field select,.field textarea,.filter-control input,.filter-control select,.report-search-input input,.form-search-box,.editable-table input,.editable-table select{border-color:var(--control-border)}
+.report-textarea>textarea{border-color:var(--control-border)!important}
+.editable-table .report-textarea>textarea{border-color:var(--control-border)!important}
+.field input:focus,.editable-table input:focus{border-color:var(--focus-color)!important}
+.field>input::placeholder,.field .date-combo>input::placeholder,.editable-table input::placeholder,.textarea-placeholder,.form-search-box input::placeholder,.report-search-input input::placeholder{color:#5b718b!important;opacity:1}
+.stage-option .custom-check{border-color:#72859d}
+.stage-option input:focus-visible+.custom-check{outline:3px solid var(--focus-color);outline-offset:4px}
+.status-badge.draft{color:#805222}.status-badge.ready,.ready-button{color:#286548}
+.review-banner.complete{color:#286548}.review-banner.incomplete,.section-validation,.section-validation h3,.section-validation p,.warning-note{color:#785329}
+.template-text-badge{color:#2f684d}.step.done,.step.done .step-done-pill{color:#2b674c}
+.signature-upload,.signature-upload small,.report-counts span,.photo-actions>span,.subtle-count,.search-result-heading>span,.search-result-list small,.report-supplier,.report-link small,.review-steps-note p,.export-note,.help-content p,.report-counts b{color:#536b85}
+.portal-grid-table th,.report-project,.portal-grid-table td::before,.report-list-heading h2 span{color:#536b85}
+.form-utility-actions .button.primary,.form-utility-actions .button.primary:hover{color:#fff;background:#315e92;border-color:#315e92}
+.modal-actions,.photo-actions,.step-footer,.review-banner{min-width:0}
+.review-banner>div,.review-banner p,.summary-grid>div,.export-card{min-width:0;overflow-wrap:anywhere}
+.review-banner.complete p,.review-banner.incomplete p{opacity:1}
+.section-validation h2{font-size:17px;color:#785329;font-weight:650;line-height:1.7}
+.section-validation a,.section-validation button{color:#785329}
+.main-shell,.editor-layout,.form-column,.export-grid,.summary-grid{min-width:0}
+.photo-actions{flex-wrap:wrap}
+.table-scroll:focus-visible{outline-offset:-3px}
+.modal,.sidebar{overscroll-behavior:contain}
+.back-link,.breadcrumbs>button{min-height:44px}
+.date-picker-btn{width:44px;height:44px;top:2px;right:2px}
+.date-combo>input[type=text]{padding-right:52px!important}
+@media(max-width:820px){html{scroll-padding-top:215px}.report-command-bar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.step-footer{grid-template-columns:minmax(0,1fr) minmax(0,1.45fr)}.modal-actions>.button{white-space:normal;line-height:1.6;text-align:center}.report-command-bar>.button{white-space:normal;min-width:0}.report-tools{flex-wrap:wrap}.export-grid,.summary-grid,.form-grid{grid-template-columns:minmax(0,1fr)}.review-banner{gap:10px;padding:16px 13px}.review-banner>span{width:34px;height:34px;flex-shrink:0}.report-counts{flex-wrap:wrap}}
+@media(max-height:500px){.topbar{position:relative}.report-command-bar{position:static}html{scroll-padding-top:20px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}

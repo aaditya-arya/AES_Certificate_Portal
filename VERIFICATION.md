@@ -18,7 +18,7 @@ The existing local implementation and both exported files supplied from Download
 
 ## Checks performed
 
-- Eight model tests pass, including impossible dates, completion, field-value search, backup validation and legacy report preservation.
+- Nine model tests pass, including impossible dates, completion, field-value search, backup validation and legacy report preservation.
 - Browser integration passes creation/editing, both date methods, live bold rendering, step completion/invalidation, field focus from search, row/photo confirmation, saving failure protection, Word/PDF downloads, PDF preview, backup/restore and mobile navigation/layout.
 - The default Word export's section 5.0 was structurally compared directly with **FINAL_DOC.docx**, including attributes, paragraphs and run formatting. It is identical.
 - The standard verification PDF contains the full inspector name and the last QAP clause.

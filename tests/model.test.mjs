@@ -37,3 +37,8 @@ test('legacy reports retain their custom activity text and data during hydration
  const r=hydrateReport(raw);assert.equal(r.client,'Legacy client');assert.equal(r.activityDetailsMode,'custom');assert.equal(activityDetailsText(r),'Existing inspection findings');assert.equal(progress(r),0);
  const fresh=newReport();assert.equal(activityDetailsText(fresh),defaultActivityDetails);assert.ok(defaultActivityDetails.includes('As per QAP S. No. B 4.4:'));
 });
+
+test('a legacy Ready report with invalid data returns to draft without losing its values',()=>{
+ const raw={...newReport(),status:'ready',reportDate:'31.02.2026',client:'Retain this client'};delete raw.completedSteps;
+ const migrated=hydrateReport(raw);assert.equal(migrated.status,'draft');assert.equal(migrated.reportDate,'31.02.2026');assert.equal(migrated.client,'Retain this client');assert.ok(!migrated.completedSteps.includes(6));
+});

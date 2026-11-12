@@ -63,12 +63,14 @@ $env:AES_TEST_URL='http://127.0.0.1:5173'
 node tests/browser.mjs
 ```
 
-The integration script checks typed and calendar dates, invalid dates, live uppercase formatting, name/value search across all steps, completion and invalidation, save failure protection, removal confirmations, linked text, tables, photographs, original section 5.0 Word XML preservation, downloads, PDF preview, draft persistence, backup/restore, and mobile overflow. It also generates a stress PDF with long activities, findings, captions and inspector names. Verification files are written to the ignored `test-results/` directory. See [VERIFICATION.md](VERIFICATION.md) for the audit and results.
+The integration script checks typed and calendar dates, invalid dates, live uppercase formatting, name/value search across all steps, completion and invalidation, save failure protection, removal confirmations, linked text, tables, photographs, original section 5.0 Word XML preservation, downloads, PDF preview, draft persistence, backup/restore, and mobile overflow. It also generates a stress PDF with long activities, findings, captions and inspector names. Verification files are written to the ignored `test-results/` directory. See [VERIFICATION.md](VERIFICATION.md) for the report audit and [STANDARDS.md](STANDARDS.md) for the W3C references, accessibility results, responsive matrix and Chrome/Firefox test commands.
 
 ## Source layout
 
 - `src/model.js`: field schema, linked values, validation, reference example, backup import validation.
 - `src/form-controls.jsx`: accessible typed/calendar dates, multiline live bold rendering, and report-detail rows.
+- `src/accessibility.css`: contrast, focus, control boundaries, reflow and reduced-height adjustments.
+- `src/focus.js`: dialog/drawer keyboard containment, focus restoration and shared scroll locking.
 - `src/standard-activity.json`: section 5.0 paragraphs extracted from the original Word document.
 - `src/main.jsx`: report library, form editor, review and export interactions.
 - `src/storage.js`: browser persistence, image preparation, downloads and backups.
@@ -78,4 +80,4 @@ The integration script checks typed and calendar dates, invalid dates, live uppe
 - `public/example/`: source reference content for the optional example.
 - `public/fonts/`: Noto Sans fonts and open font license for PDF embedding.
 
-The original source documents in the parent directory are unchanged. Asset preparation is recorded in `../analysis/prepare_assets.py` for traceability; it is not needed to run or build the portal.
+All template, example, branding and font assets required to run or build the portal are included. Original source documents and generated reports are not required to build the application. The originals in the development workspace were left unchanged.

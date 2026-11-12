@@ -1,1 +1,28 @@
-{"name":"akshar-inspection-portal","private":true,"version":"1.0.0","type":"module","scripts":{"dev":"vite --host 127.0.0.1","build":"vite build","preview":"vite preview --host 127.0.0.1","test":"node --test tests/*.test.mjs"},"dependencies":{"idb-keyval":"^6.2.1","jspdf":"^4.2.1","jspdf-autotable":"^5.0.0","jszip":"^3.10.1","lucide-react":"^0.468.0","react":"^19.0.0","react-dom":"^19.0.0"},"devDependencies":{"@playwright/test":"^1.51.0","vite":"^6.0.0"}}
+{
+  "name": "akshar-inspection-portal",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "test:standards": "node tests/standards-scan.mjs"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.0",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.51.0",
+    "vite": "^6.0.0"
+  }
+}

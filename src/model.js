@@ -415,7 +415,10 @@ export function activityDetailsText(r) {
 }
 export function hydrateReport(raw) {
   const base = newReport();
-  return {...base,...raw,
+  const report={...base,...raw,
     completedSteps:Array.isArray(raw.completedSteps)?raw.completedSteps.filter(x=>Number.isInteger(x)&&x>=0&&x<=6):raw.status==='ready'?[0,1,2,3,4,5,6]:[],
     activityDetailsMode:raw.activityDetailsMode || (raw.activityDetails===defaultActivityDetails?'template':'custom')};
+  const pending=issues(report);
+  if(report.status==='ready'&&pending.length){report.status='draft';report.completedSteps=report.completedSteps.filter(index=>index!==6&&!pending.some(issue=>issue.section===index));}
+  return report;
 }

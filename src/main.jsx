@@ -1,5 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
+import {createPortal} from 'react-dom';
+import {containTab,restoreFocus,lockPageScroll} from './focus';
 import {
   FileText, Plus, ArrowUpRight, ArrowRight, ArrowLeft, ChevronRight, Check,
   CheckCircle2, Clock3, Search, Download, Upload, ImagePlus, Images, Trash2,
@@ -18,6 +20,7 @@ import {
 import {readReports, saveReports, backup, download, imageFile} from './storage';
 import {DateInput, ReportTextarea, ReportDetailRow} from './form-controls';
 import './styles.css';
+import './accessibility.css';
 
 const icons = [FileText, Settings2, ClipboardCheck, FileCheck2, Images, Users, Eye];
 
@@ -36,7 +39,7 @@ function SidebarToggleSvg({collapsed}) {
 
 function Button({children, icon: Icon, className = '', ...props}) {
   return (
-    <button className={`button ${className}`} {...props}>
+    <button type="button" className={`button ${className}`} {...props}>
       {Icon && <Icon size={17} />}
       <span>{children}</span>
     </button>
@@ -118,13 +121,13 @@ function EditableTable({type, rows, onChange, title = 'Add row', topRows = null}
   const edit = (id, key, value) => onChange(rows.map(x => x.id === id ? {...x, [key]: value} : x));
   return (
     <div className="editable-table">
-      <div className="table-scroll">
+      <div className="table-scroll" role="region" aria-label={`${type} entries`} tabIndex={0}>
         <table>
           <thead>
             <tr>
-              <th className="row-index">Sr.</th>
-              {defs.map(([key, label]) => <th key={key}>{label}</th>)}
-              <th className="action-col">Action</th>
+              <th scope="col" className="row-index">Sr.</th>
+              {defs.map(([key, label]) => <th scope="col" key={key}>{label}</th>)}
+              <th scope="col" className="action-col">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -203,7 +206,7 @@ function EditableTable({type, rows, onChange, title = 'Add row', topRows = null}
 function FormattedActivityPreview({text}) {
   const lines = String(text || '').split('\n');
   return (
-    <div className="report-box-preview" aria-label="Section 5.0 formatted report preview">
+    <div className="report-box-preview" role="region" aria-label="Section 5.0 formatted report preview">
       <div className="preview-box-header">
         <span>Original report text</span>
       </div>
@@ -242,42 +245,25 @@ function FormattedActivityPreview({text}) {
   );
 }
 
-function Modal({title, children, onClose}) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const previous = document.activeElement;
-    ref.current?.focus();
-    const handler = e => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'Tab') {
-        const nodes = ref.current.querySelectorAll('button,input,a,select,textarea,[tabindex="0"]');
-        const first = nodes[0], last = nodes[nodes.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
+function Modal({title,children,onClose}) {
+  const ref=useRef(null),close=useRef(onClose);close.current=onClose;
+  useEffect(()=>{
+    const previous=document.activeElement,root=document.getElementById('root');
+    const rootWasInert=root.inert,unlockScroll=lockPageScroll();
+    root.inert=true;ref.current.focus();
+    const handler=event=>{
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close.current();}
+      else containTab(event,ref.current);
     };
-    document.addEventListener('keydown', handler);
-    return () => {
-      document.removeEventListener('keydown', handler);
-      previous?.focus();
-    };
-  }, []);
-  return (
-    <div className="modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-label={title} className="modal" tabIndex={-1} ref={ref}>
-        <div className="modal-heading">
-          <h2>{title}</h2>
-          <button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20} /></button>
-        </div>
-        {children}
-      </div>
+    ref.current.addEventListener('keydown',handler);
+    return()=>{ref.current?.removeEventListener('keydown',handler);root.inert=rootWasInert;unlockScroll();restoreFocus(previous);};
+  },[]);
+  return createPortal(<div className="modal-backdrop" onClick={event=>{if(event.target===event.currentTarget)onClose();}}>
+    <div role="dialog" aria-modal="true" aria-label={title} className="modal" tabIndex={-1} ref={ref}>
+      <div className="modal-heading"><h2>{title}</h2><button type="button" className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={20}/></button></div>
+      {children}
     </div>
-  );
+  </div>,document.body);
 }
 
 function App() {
@@ -302,6 +288,18 @@ function App() {
   const [toast, setToast] = useState('');
   const [busy, setBusy] = useState('');
   const [mobile, setMobile] = useState(false);
+  const [smallScreen,setSmallScreen]=useState(()=>matchMedia('(max-width:820px)').matches);
+  const sidebarRef=useRef(null),mobileMenuRef=useRef(null);
+  const sidebarHidden=smallScreen?!mobile:sidebarCollapsed;
+  useEffect(()=>{const query=matchMedia('(max-width:820px)');const change=()=>{setSmallScreen(query.matches);if(!query.matches)setMobile(false);};query.addEventListener('change',change);return()=>query.removeEventListener('change',change);},[]);
+  useEffect(()=>{
+    if(!mobile||!smallScreen)return;
+    const sidebar=sidebarRef.current,unlockScroll=lockPageScroll();
+    sidebar.querySelector('.mobile-close').focus();
+    const handler=event=>{if(event.key==='Escape'){event.preventDefault();setMobile(false);}else containTab(event,sidebar);};
+    sidebar.addEventListener('keydown',handler);
+    return()=>{sidebar.removeEventListener('keydown',handler);unlockScroll();restoreFocus(mobileMenuRef.current);};
+  },[mobile,smallScreen]);
   const [modal, setModal] = useState(null);
   const [pdfUrl, setPdfUrl] = useState('');
 
@@ -557,8 +555,8 @@ function App() {
   const isStepVisible=idx=>showAllSteps||step===idx;
 
   return (
-    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <aside id="report-sidebar" inert={sidebarCollapsed&&!mobile?true:undefined} aria-hidden={sidebarCollapsed&&!mobile?true:undefined} className={`sidebar ${mobile ? 'mobile-open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
+    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}><a className="skip-link" href="#main-content">Skip to report content</a>
+      <div ref={sidebarRef} id="report-sidebar" inert={sidebarHidden?true:undefined} aria-hidden={sidebarHidden?true:undefined} role={mobile&&smallScreen?'dialog':'complementary'} aria-modal={mobile&&smallScreen?true:undefined} aria-label={mobile&&smallScreen?'Report navigation':'Report sidebar'} className={`sidebar ${mobile ? 'mobile-open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-top-row">
           <a className="brand" href="#" onClick={e => { e.preventDefault(); closeEditor(); }}>
             <img src="/aes-logo.jpg" alt="Akshar Engineering Services" />
@@ -623,16 +621,16 @@ function App() {
           </button>
 
         </div>
-      </aside>
+      </div>
       {mobile && <div className="sidebar-overlay" onClick={() => setMobile(false)} />}
 
-      <div className="main-shell">
+      <div className="main-shell" inert={mobile&&smallScreen?true:undefined}>
         <header className="topbar">
           <div className="breadcrumbs">
             <button
               type="button"
               className="sidebar-toggle-button"
-              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={sidebarCollapsed ? 'Menu: expand sidebar' : 'Menu: collapse sidebar'}
               title={sidebarCollapsed ? 'Show left sidebar' : 'Hide left sidebar'}
               aria-expanded={!sidebarCollapsed} aria-controls="report-sidebar"
               onClick={() => {
@@ -643,7 +641,7 @@ function App() {
               <SidebarToggleSvg collapsed={sidebarCollapsed} />
               <span>Menu</span>
             </button>
-            <button className="mobile-menu icon-button" aria-label="Open navigation" onClick={() => setMobile(true)}>
+            <button ref={mobileMenuRef} className="mobile-menu icon-button" aria-label="Open navigation" aria-controls="report-sidebar" aria-expanded={mobile} onClick={() => setMobile(true)}>
               <Menu size={20} />
             </button>
             <button onClick={closeEditor}>Inspection reports</button>
@@ -663,7 +661,7 @@ function App() {
           </div>
         </header>
 
-        <main className={r ? 'editor-page' : 'library-page'}>
+        <main id="main-content" tabIndex={-1} className={r ? 'editor-page' : 'library-page'}>
           {error && (
             <div className="error-banner" role="alert">
               <AlertCircle size={18} />
@@ -775,7 +773,7 @@ function App() {
 
               {/* Form Search & View All Fields Bar */}
               <div className="form-utility-bar">
-                <label className="form-search-box">
+                <div className="form-search-box">
                   <Search size={17} />
                   <input
                     type="text"
@@ -789,11 +787,11 @@ function App() {
                       <X size={15} />
                     </button>
                   )}
-                </label>
+                </div>
                 <div className="form-utility-actions">
                   <button
                     type="button"
-                    className={`button ${showAllSteps || activeSearchQuery ? 'primary' : ''}`}
+                    className={`button ${showAllSteps ? 'primary' : ''}`}
                     onClick={() => {
                       setFormSearch('');
                       setShowAllSteps(v => !v);
@@ -809,7 +807,7 @@ function App() {
                 <div className="search-result-heading"><h2>{searchResults.length} matching {searchResults.length===1?'field':'fields'}</h2><span>Searches field names, guidance and entered values across all seven steps.</span></div>
                 {searchResults.length?<div className="search-result-list">{searchResults.slice(0,60).map(result=><button key={result.path} onClick={()=>goToField(result)}><span className="search-step">{result.section+1}</span><span><strong>{result.label}</strong><small>{result.value&& !result.path.endsWith('Signature') ? result.value.slice(0,160):result.help}</small></span><ArrowRight size={17}/></button>)}</div>:<p className="no-field-results">No fields match “{formSearch}”. Try a field name, a report section number, or text you entered.</p>}
               </section>}
-              {sectionWarnings.length>0&&<div className="section-validation" role="alert"><h3>Complete these details before continuing</h3><ul>{sectionWarnings.map((x,i)=><li key={i}>{x.message}</li>)}</ul><p>You can also choose another step and return later.</p></div>}
+              {sectionWarnings.length>0&&<div className="section-validation" role="alert"><h2>Complete these details before continuing</h2><ul>{sectionWarnings.map((x,i)=><li key={i}>{x.message}</li>)}</ul><p>You can also choose another step and return later.</p></div>}
               <div className="editor-layout">
                 <div className="form-column">
                   {!showAllSteps && (
@@ -860,7 +858,7 @@ function App() {
                         <div className="form-grid">{field('aesPO','PO number · client to AES',{placeholder:'e.g. 1014000087'})}{field('aesPODate','PO date · client to AES',{type:'date'})}</div>
                       </ReportDetailRow>
                       <ReportDetailRow number={7} title="Place of inspection" help="The factory or site where this visit takes place.">
-                        <label className="inline-checkbox"><input data-field-path="locationIsManufacturer" type="checkbox" aria-label="Inspection at the manufacturer / supplier" checked={r.locationIsManufacturer} onChange={e=>update('locationIsManufacturer',e.target.checked)}/><span>Use the manufacturer / supplier name</span></label>
+                        <label className="inline-checkbox"><input data-field-path="locationIsManufacturer" type="checkbox" aria-label="Use the manufacturer / supplier name" checked={r.locationIsManufacturer} onChange={e=>update('locationIsManufacturer',e.target.checked)}/><span>Use the manufacturer / supplier name</span></label>
                         {!r.locationIsManufacturer&&field('locationOrganization','Inspection organization',{required:true,placeholder:'Organization or factory name'})}
                         <div className="form-grid location-fields">
                           {field('street','Street / address',{wide:true,placeholder:'Optional plot, building or road'})}
@@ -872,7 +870,7 @@ function App() {
                         {location(r,true)&&<div className="address-preview"><span>Full inspection address</span><p>{location(r,true)}</p></div>}
                       </ReportDetailRow>
                       <ReportDetailRow number={8} title="Inspection requested by" help="The organization that requested this visit.">
-                        <label className="inline-checkbox"><input data-field-path="requesterIsClient" type="checkbox" aria-label="Inspection requested by the client" checked={r.requesterIsClient} onChange={e=>update('requesterIsClient',e.target.checked)}/><span>Same as the client</span></label>
+                        <label className="inline-checkbox"><input data-field-path="requesterIsClient" type="checkbox" aria-label="Same as the client" checked={r.requesterIsClient} onChange={e=>update('requesterIsClient',e.target.checked)}/><span>Same as the client</span></label>
                         {r.requesterIsClient?<div className="linked-value"><Link2 size={16}/><span>{r.client||'Enter the client name in row 01.'}</span></div>:field('requester','Inspection requested by',{required:true,placeholder:'Requesting organization'})}
                       </ReportDetailRow>
                       <ReportDetailRow number={9} title="Date of inspection" help="The visit start date and number of inspection days.">
@@ -1375,7 +1373,7 @@ function App() {
                         PDF (.pdf)
                       </Button>
                     </div>
-                    {step < 6 ? (
+                    {step < 6 || showAllSteps ? (
                       <Button className="primary next-button" onClick={completeCurrentStep}>
                         {showAllSteps?'Confirm all sections & continue':'Complete step & continue'} <ArrowRight size={16} />
                       </Button>
