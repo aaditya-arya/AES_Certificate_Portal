@@ -20,6 +20,14 @@ Open the Local URL printed by Vite. For production, run `npm run build` and serv
 3. Review the required fields and export Word or PDF. Draft export is available while fields are incomplete.
 4. Download a JSON backup to preserve the editable report and its photographs.
 
+The interface uses 16 px form text and 44–48 px primary controls. The report library contains search, stage/status filters, and direct Word, PDF, and Open actions. Extra report actions are under More. The sidebar menu can be collapsed, and becomes a drawer on smaller screens.
+
+Use **Complete step & continue** to review each step. The progress bar counts reviewed steps, rather than prefilled fields. Editing a reviewed section invalidates that step and the final review. Optional photographs can be omitted while still completing their review step. **View all sections** shows the whole report in document order; its footer can confirm all displayed sections after validation. Form search looks through field names, guidance, and entered values, including table cells and photograph descriptions, and focuses the selected field.
+
+Every report date can be typed (DD.MM.YYYY, DD/MM/YYYY, or ISO) or chosen through its keyboard-accessible calendar button. Invalid calendar dates are rejected by review validation and identified beside the input.
+
+Leaving a changed report opens a save-before-leaving dialog. A failed write keeps the editor open. Pending writes trigger the browser's native close/reload warning. Populated row removal, photograph removal, report deletion, and replacement of custom section 5.0 text require confirmation.
+
 The ten-row report details table and stage selector have a fixed structure. Equipment, reference documents, activity rows, calibration instruments, expenditure entries, and attendees start with one data row each. Their plus buttons add rows only to those repeatable lists.
 
 The opening paragraph derives the requester from the client by default, and the inspection organization from the manufacturer by default. Both links can be disabled for a different organization. Its location is **organization, locality, state**. Street, city, and PIN remain in the full address in the report details table. The visit date is reused in the paragraph.
@@ -29,6 +37,8 @@ Photographs are stored with individual descriptions, can be reordered, and expor
 ## Export fidelity
 
 Word generation fills a cleaned copy of the original `FINAL_DOC.docx` package. It preserves the template's section order, table structures, page dimensions, branding, styles, headers, and footer page-number fields. Repeated rows and photograph pairs are cloned from their template rows. Word recalculates page numbers on opening. Dynamic content changes page count.
+
+Section **5.0 Details of activities carried out** is included from the original document by default. Its original Word XML is left unchanged, preserving paragraphs, list numbering, indentation and emphasis. Existing custom content is retained for older drafts. Existing custom text remains editable; restoring the original requires confirmation. New reports use the original section automatically. Uppercase fields and uppercase lines are shown in bold in the form and formatted accordingly in exports. Original section 5.0 emphasis is preserved as supplied.
 
 The direct PDF export recreates the AES layout with embedded Noto Sans fonts, repeating page headers, footers, automatic table pagination, and photograph captions. Its pagination and typography can differ from Microsoft Word. To obtain exactly Word's rendering, open the exported `.docx` in Word and use **Save as PDF**.
 
@@ -45,16 +55,21 @@ Reports do not move automatically between the local development URL and the host
 ```powershell
 npm test
 npm run build
-npm run dev -- --port 5173
+npm run dev -- --port 5174
 # In another terminal, with Google Chrome installed:
+node tests/browser.mjs
+# Override the test URL when using another port:
+$env:AES_TEST_URL='http://127.0.0.1:5173'
 node tests/browser.mjs
 ```
 
-The integration script checks linked text, row counts, added rows, captions, exports, specimen-data removal, draft persistence, backup/restore, the reference example, and mobile overflow. It writes verification files to the ignored `test-results/` directory. A generated Word file has also been opened and its page rendering inspected in Microsoft Word on the development computer. Automated Word-to-PDF conversion could not be completed in that environment; direct PDF generation is tested independently.
+The integration script checks typed and calendar dates, invalid dates, live uppercase formatting, name/value search across all steps, completion and invalidation, save failure protection, removal confirmations, linked text, tables, photographs, original section 5.0 Word XML preservation, downloads, PDF preview, draft persistence, backup/restore, and mobile overflow. It also generates a stress PDF with long activities, findings, captions and inspector names. Verification files are written to the ignored `test-results/` directory. See [VERIFICATION.md](VERIFICATION.md) for the audit and results.
 
 ## Source layout
 
 - `src/model.js`: field schema, linked values, validation, reference example, backup import validation.
+- `src/form-controls.jsx`: accessible typed/calendar dates, multiline live bold rendering, and report-detail rows.
+- `src/standard-activity.json`: section 5.0 paragraphs extracted from the original Word document.
 - `src/main.jsx`: report library, form editor, review and export interactions.
 - `src/storage.js`: browser persistence, image preparation, downloads and backups.
 - `src/word.js`: fills the original Word template using namespace-aware XML.

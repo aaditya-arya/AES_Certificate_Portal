@@ -1,0 +1,42 @@
+[
+  {
+    "text": "All the above activities are carried out as per QAP and the results are documented in the attached reports. The job no. 6393/1 and its internal testing report were verified as per BBL numbering and test procedure for core coil assembly.",
+    "bullet": true
+  },
+  {
+    "text": "The following test are carried out on transformers CCA after ovening and tanking.",
+    "bullet": true
+  },
+  {
+    "text": "",
+    "bullet": false
+  },
+  {
+    "text": "Core Coil Assembly",
+    "bullet": false
+  },
+  {
+    "text": "As per QAP S. No. B 4.1: The electrical clearances as per BBL standard internal drawings for CCA after ovening and after tanking measured and found satisfactory as per the requirements of minimum clearance. Refer attached report for details. HV and LV leads to tank wall as per Drawings.",
+    "bullet": false
+  },
+  {
+    "text": "As per QAP S. No. B 4.2: This was visually observed and found satisfactory. The bolting arrangement was verified with marking of correct torque (Yel-low Line) application for each bolt as per BBL standard practice.",
+    "bullet": false
+  },
+  {
+    "text": "As per QAP S. No. B 4.3: Core to Frame insulation resistance is measured and found more than adequate >100MOhm.",
+    "bullet": false
+  },
+  {
+    "text": "As per QAP S. No. B 4.4: The final parameters such as Average Temperature after ovening, Dew point, Extraction of water volume after ovening.",
+    "bullet": false
+  },
+  {
+    "text": "were verified as per BBL records/registers and verified physically and found satisfactory. Refer attached reports",
+    "bullet": false
+  },
+  {
+    "text": "Reviewed calibration certificate of testing and measuring instruments and found calibrated.",
+    "bullet": true
+  }
+]

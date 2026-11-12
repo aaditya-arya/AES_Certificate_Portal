@@ -1,42 +1,339 @@
 import JSZip from 'jszip';
-import {generalRows,columns,displayDate,narrative,stages,requester,location,timeText} from './model';
-const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
-const R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-const REL='http://schemas.openxmlformats.org/package/2006/relationships';
-const children=(node,tag)=>Array.from(node.children).filter(n=>n.namespaceURI===W&&n.localName===tag);
-const all=(node,tag)=>Array.from(node.getElementsByTagNameNS(W,tag));
-const parse=s=>{const doc=new DOMParser().parseFromString(s,'application/xml');if(doc.querySelector('parsererror'))throw Error('Could not read the Word template.');return doc;};
-const serialize=d=>new XMLSerializer().serializeToString(d);
-function el(doc,tag,attrs={}){const n=doc.createElementNS(W,`w:${tag}`);for(const [key,value] of Object.entries(attrs))n.setAttributeNS(W,`w:${key}`,value);return n;}
-function run(doc,text,bold=false,templateProps=null){const r=el(doc,'r');const props=templateProps?templateProps.cloneNode(true):el(doc,'rPr');if(!children(props,'rFonts').length)props.prepend(el(doc,'rFonts',{ascii:'Aptos',hAnsi:'Aptos'}));for(const n of children(props,'b').concat(children(props,'bCs')))n.remove();props.append(el(doc,'b',{val:bold?'1':'0'}),el(doc,'bCs',{val:bold?'1':'0'}));r.append(props);const t=el(doc,'t');t.setAttribute('xml:space','preserve');t.textContent=text;r.append(t);return r;}
-function setParagraph(p,value,bold=false){const pPr=children(p,'pPr')[0];const props=pPr?children(pPr,'rPr')[0]:null;for(const n of Array.from(p.children))if(n.localName!=='pPr')n.remove();for(const [i,line] of String(value||'').split('\n').entries()){if(i){const r=el(p.ownerDocument,'r');r.append(el(p.ownerDocument,'br'));p.append(r);}p.append(run(p.ownerDocument,line,bold,props));}return p;}
-function setCell(cell,value,bold=false){const base=children(cell,'p')[0]?.cloneNode(true)||el(cell.ownerDocument,'p');for(const n of Array.from(cell.children))if(n.localName!=='tcPr')n.remove();for(const line of String(value||'').split('\n'))cell.append(setParagraph(base.cloneNode(true),line,bold));}
-function repeat(table,headerCount,rows,values,trailerCount=0){const trs=children(table,'tr');const seed=trs[headerCount].cloneNode(true);for(const row of trs.slice(headerCount,trs.length-trailerCount))row.remove();const trailer=trailerCount?children(table,'tr').at(-trailerCount):null;for(const row of rows){const tr=seed.cloneNode(true);const cells=children(tr,'tc');values(row).forEach((value,i)=>setCell(cells[i],value));if(trailer)table.insertBefore(tr,trailer);else table.append(tr);}}
-export async function generateWord(r){
- const res=await fetch('/report-template.docx');if(!res.ok)throw Error('Could not load the Word template.');const zip=await JSZip.loadAsync(await res.arrayBuffer());const doc=parse(await zip.file('word/document.xml').async('string'));const body=all(doc,'body')[0];const t=children(body,'tbl');
- generalRows(r).forEach(([,value],i)=>setCell(children(children(t[0],'tr')[i],'tc')[1],value));
- const intro=children(body,'p')[0];setParagraph(intro,'As requested by ');intro.append(run(doc,requester(r),true),run(doc,' inspection carried out at '),run(doc,location(r),true),run(doc,' On '),run(doc,displayDate(r.inspectionDate),true),run(doc,' and scope of services as described below.'));
- children(children(t[1],'tr')[0],'tc').forEach((c,i)=>{for(const check of all(c,'checkBox')){for(const n of Array.from(check.children))if(n.localName==='default'||n.localName==='checked')n.setAttributeNS(W,'w:val',r.stages.includes(stages[i])?'1':'0');}});
- for(const [key,ix,head,tail] of [['equipment',2,1,0],['documents',3,2,0],['calibration',6,1,1]])repeat(t[ix],head,r[key],row=>columns[key].map(([key,,format])=>format==='date'?displayDate(row[key]):row[key]),tail);
- setCell(children(children(t[3],'tr')[0],'tc')[0],`Reference Standards: ${r.standards}`,true);
- const activityRows=children(t[4],'tr');const group=activityRows[1].cloneNode(true),subgroup=activityRows[2].cloneNode(true),seed=activityRows[3].cloneNode(true);for(const row of activityRows.slice(1))row.remove();
- for(const [row,code,title] of [[group,r.activityGroupCode,r.activityGroup],[subgroup,r.activitySubgroupCode,r.activitySubgroup]])if(code||title){const c=children(row,'tc');setCell(c[0],code,true);setCell(c[1],title,true);t[4].append(row);}
- t[4].append(seed);const head=children(t[4],'tr').length-1;repeat(t[4],head,r.activities,row=>columns.activities.map(([k])=>row[k]));
- for(const [ix,value] of [[5,r.activityDetails],[7,`Conclusion:\n${r.conclusion}`],[8,`Pending Activities: ${r.pending}`],[9,`Identification of the Inspected Items: ${r.identification}`],[10,`Non-Conformities raised / Discrepancies observed during Inspection: ${r.nonconformities}`],[11,`Enclosure:\n${r.enclosures}`]]){const cell=children(children(t[ix],'tr')[0],'tc')[0];setCell(cell,value);const p=children(cell,'p')[0];const first=all(p,'t')[0];if(first){const s=first.textContent;const colon=s.indexOf(':');if(colon>=0){setParagraph(p,'');p.append(run(doc,s.slice(0,colon+1),true),run(doc,s.slice(colon+1)));}}}
- const rels=parse(await zip.file('word/_rels/document.xml.rels').async('string'));const types=parse(await zip.file('[Content_Types].xml').async('string'));let imageIndex=100;
- function addImage(cell,data,maxW,maxH,description){if(!data)return;const image=new Image();return new Promise((resolve,reject)=>{image.onload=()=>{try{const id=`rIdAES${imageIndex++}`;const ext=data.startsWith('data:image/png')?'png':'jpeg';const name=`aes-${imageIndex}.${ext}`;zip.file(`word/media/${name}`,data.split(',')[1],{base64:true});const rel=rels.createElementNS(REL,'Relationship');rel.setAttribute('Id',id);rel.setAttribute('Type',`${R}/image`);rel.setAttribute('Target',`media/${name}`);rels.documentElement.append(rel);
- if(!Array.from(types.documentElement.children).some(n=>n.getAttribute('Extension')===ext)){const n=types.createElementNS(types.documentElement.namespaceURI,'Default');n.setAttribute('Extension',ext);n.setAttribute('ContentType',`image/${ext}`);types.documentElement.append(n);}
- const scale=Math.min(maxW/image.width,maxH/image.height);const cx=Math.round(image.width*scale*12700),cy=Math.round(image.height*scale*12700);
- const fragment=parse(`<w:p xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${imageIndex}" name="Inspection image ${imageIndex}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="${name}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${id}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`);
- const p=doc.importNode(fragment.documentElement,true);p.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing','docPr')[0].setAttribute('descr',description||'');for(const n of children(cell,'p'))n.remove();cell.append(p);resolve();}catch(e){reject(e);}};image.onerror=()=>reject(Error('An image could not be included in the report.'));image.src=data;});}
- const photoRows=children(t[12],'tr');const pictureSeed=photoRows[0].cloneNode(true),captionSeed=photoRows[1].cloneNode(true);photoRows.forEach(n=>n.remove());
- for(let i=0;i<r.photos.length;i+=2){const pr=pictureSeed.cloneNode(true),cr=captionSeed.cloneNode(true);for(const [j,photo] of [r.photos[i],r.photos[i+1]].entries()){setCell(children(pr,'tc')[j],'');setCell(children(cr,'tc')[j],photo?.caption||'',true);if(photo)await addImage(children(pr,'tc')[j],photo.data,250,182,photo.caption);}const prop=children(pr,'trPr')[0]||el(doc,'trPr');if(!prop.parentNode)pr.prepend(prop);prop.append(el(doc,'cantSplit'));for(const p of all(pr,'p')){const pp=children(p,'pPr')[0]||el(doc,'pPr');if(!pp.parentNode)p.prepend(pp);pp.append(el(doc,'keepNext'));}t[12].append(pr,cr);}
- if(!r.photos.length){const row=captionSeed.cloneNode(true);children(row,'tc').forEach(c=>setCell(c,''));t[12].append(row);}
- repeat(t[13],1,r.expenses,(row)=>[r.expenses.indexOf(row)+1,displayDate(row.date),timeText(row.entry),timeText(row.exit),row.travel,row.km?`${row.km} KM`:'']);
- const signs=children(t[14],'tr');const fields=children(signs[2],'tc');[r.inspector,displayDate(r.inspectorDate),r.reviewer,displayDate(r.reviewerDate)].forEach((value,i)=>setCell(fields[i*2+1],value));const sigcells=children(signs[1],'tc');await addImage(sigcells[0],r.inspectorSignature,160,55,'Inspector signature');await addImage(sigcells[1],r.reviewerSignature,160,55,'Reviewer signature');
- zip.file('word/document.xml',serialize(doc));zip.file('word/_rels/document.xml.rels',serialize(rels));zip.file('[Content_Types].xml',serialize(types));
- for(const name of Object.keys(zip.files).filter(n=>/^word\/header\d+\.xml$/.test(n))){const h=parse(await zip.file(name).async('string'));for(const n of all(h,'t'))n.textContent=n.textContent.replace('{{reportNo}}',r.reportNo).replace('{{revision}}',r.revision).replace('{{reportDate}}',displayDate(r.reportDate));zip.file(name,serialize(h));}
- // Recalculate the template's PAGE and NUMPAGES fields when opened in Word.
- const settings=parse(await zip.file('word/settings.xml').async('string'));let update=all(settings,'updateFields')[0];if(!update){update=el(settings,'updateFields');settings.documentElement.append(update);}update.setAttributeNS(W,'w:val','true');zip.file('word/settings.xml',serialize(settings));
- return zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
+import {generalRows, columns, displayDate, stages, requester, location, timeText, isCapsText, activityDetailsText} from './model';
+
+const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const REL = 'http://schemas.openxmlformats.org/package/2006/relationships';
+
+const children = (node, tag) => Array.from(node.children).filter(n => n.namespaceURI === W && n.localName === tag);
+const all = (node, tag) => Array.from(node.getElementsByTagNameNS(W, tag));
+const parse = s => {
+  const doc = new DOMParser().parseFromString(s, 'application/xml');
+  if (doc.querySelector('parsererror')) throw Error('Could not read the Word template.');
+  return doc;
+};
+const serialize = d => new XMLSerializer().serializeToString(d);
+
+function el(doc, tag, attrs = {}) {
+  const n = doc.createElementNS(W, `w:${tag}`);
+  for (const [key, value] of Object.entries(attrs)) n.setAttributeNS(W, `w:${key}`, value);
+  return n;
+}
+
+function run(doc, text, bold = false, templateProps = null, underline = false) {
+  const r = el(doc, 'r');
+  const props = templateProps ? templateProps.cloneNode(true) : el(doc, 'rPr');
+  if (!children(props, 'rFonts').length) props.prepend(el(doc, 'rFonts', {ascii: 'Aptos', hAnsi: 'Aptos'}));
+  for (const n of children(props, 'b').concat(children(props, 'bCs'), children(props, 'u'))) n.remove();
+  props.append(el(doc, 'b', {val: bold ? '1' : '0'}), el(doc, 'bCs', {val: bold ? '1' : '0'}));
+  if (underline) props.append(el(doc, 'u', {val: 'single'}));
+  r.append(props);
+  const t = el(doc, 't');
+  t.setAttribute('xml:space', 'preserve');
+  t.textContent = text;
+  r.append(t);
+  return r;
+}
+
+function setParagraph(p, value, bold = false) {
+  const pPr = children(p, 'pPr')[0];
+  const props = pPr ? children(pPr, 'rPr')[0] : null;
+  for (const n of Array.from(p.children)) if (n.localName !== 'pPr') n.remove();
+  for (const [i, line] of String(value || '').split('\n').entries()) {
+    if (i) {
+      const r = el(p.ownerDocument, 'r');
+      r.append(el(p.ownerDocument, 'br'));
+      p.append(r);
+    }
+    const lineBold = bold || isCapsText(line);
+    p.append(run(p.ownerDocument, line, lineBold, props));
+  }
+  return p;
+}
+
+function setCell(cell, value, bold = false) {
+  const base = children(cell, 'p')[0]?.cloneNode(true) || el(cell.ownerDocument, 'p');
+  for (const n of Array.from(cell.children)) if (n.localName !== 'tcPr') n.remove();
+  for (const line of String(value || '').split('\n')) {
+    cell.append(setParagraph(base.cloneNode(true), line, bold));
+  }
+}
+
+function fillActivityDetailsCell(doc, cell, text) {
+  for (const n of Array.from(cell.children)) if (n.localName !== 'tcPr') n.remove();
+  const lines = String(text || '').split('\n');
+  let afterQap = false;
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const p = el(doc, 'p');
+    const pPr = el(doc, 'pPr');
+    pPr.append(el(doc, 'spacing', {line: '276', lineRule: 'auto'}), el(doc, 'jc', {val: 'both'}));
+    if (!line) {
+      afterQap = false;
+      p.append(pPr);
+      cell.append(p);
+      continue;
+    }
+    if (line.startsWith('➢') || line.startsWith('•')) {
+      afterQap = false;
+      pPr.prepend(el(doc, 'pStyle', {val: 'ListParagraph'}));
+      const numPr = el(doc, 'numPr');
+      numPr.append(el(doc, 'ilvl', {val: '0'}), el(doc, 'numId', {val: '8'}));
+      pPr.append(numPr, el(doc, 'ind', {left: '459'}));
+      p.append(pPr, run(doc, line.replace(/^[➢•]\s*/, ''), false));
+      cell.append(p);
+      continue;
+    }
+    if (/^Core Coil Assembly$/i.test(line)) {
+      afterQap = false;
+      p.append(pPr, run(doc, line, true, null, true));
+      cell.append(p);
+      continue;
+    }
+    const qapMatch = line.match(/^(As per QAP[^:]*:)\s*(.*)$/i);
+    if (qapMatch) {
+      afterQap = true;
+      pPr.prepend(el(doc, 'pStyle', {val: 'ListParagraph'}));
+      pPr.append(el(doc, 'ind', {left: '2301', hanging: '2127'}));
+      p.append(pPr, run(doc, `${qapMatch[1]} `, true), run(doc, qapMatch[2], false));
+      cell.append(p);
+      continue;
+    }
+    if (afterQap) {
+      pPr.prepend(el(doc, 'pStyle', {val: 'ListParagraph'}));
+      pPr.append(el(doc, 'ind', {left: '2301'}));
+    }
+    p.append(pPr, run(doc, line, isCapsText(line)));
+    cell.append(p);
+  }
+}
+
+function fillEnclosuresCell(doc, cell, value) {
+  for (const n of Array.from(cell.children)) if (n.localName !== 'tcPr') n.remove();
+  const titleP = el(doc, 'p');
+  titleP.append(run(doc, 'Enclosure:', true));
+  cell.append(titleP);
+  const items = String(value || '').split('\n').map(s => s.replace(/^[•➢-]\s*/, '').trim()).filter(Boolean);
+  for (const item of items) {
+    const p = el(doc, 'p');
+    const pPr = el(doc, 'pPr');
+    const numPr = el(doc, 'numPr');
+    numPr.append(el(doc, 'ilvl', {val: '0'}), el(doc, 'numId', {val: '3'}));
+    pPr.append(numPr, el(doc, 'contextualSpacing'));
+    p.append(pPr, run(doc, item, isCapsText(item)));
+    cell.append(p);
+  }
+}
+
+function repeat(table, headerCount, rows, values, trailerCount = 0) {
+  const trs = children(table, 'tr');
+  const seed = trs[headerCount].cloneNode(true);
+  for (const row of trs.slice(headerCount, trs.length - trailerCount)) row.remove();
+  const trailer = trailerCount ? children(table, 'tr').at(-trailerCount) : null;
+  for (const row of rows) {
+    const tr = seed.cloneNode(true);
+    const cells = children(tr, 'tc');
+    values(row).forEach((value, i) => setCell(cells[i], value));
+    if (trailer) table.insertBefore(tr, trailer);
+    else table.append(tr);
+  }
+}
+
+export async function generateWord(r) {
+  const res = await fetch('/report-template.docx');
+  if (!res.ok) throw Error('Could not load the Word template.');
+  const zip = await JSZip.loadAsync(await res.arrayBuffer());
+  const doc = parse(await zip.file('word/document.xml').async('string'));
+  const body = all(doc, 'body')[0];
+  const t = children(body, 'tbl');
+
+  generalRows(r).forEach(([, value], i) => setCell(children(children(t[0], 'tr')[i], 'tc')[1], value));
+
+  const intro = children(body, 'p')[0];
+  setParagraph(intro, 'As requested by ');
+  intro.append(
+    run(doc, requester(r), true),
+    run(doc, ' inspection carried out at '),
+    run(doc, location(r), true),
+    run(doc, ' On '),
+    run(doc, displayDate(r.inspectionDate), true),
+    run(doc, ' and scope of services as described below.')
+  );
+
+  children(children(t[1], 'tr')[0], 'tc').forEach((c, i) => {
+    for (const check of all(c, 'checkBox')) {
+      for (const n of Array.from(check.children)) {
+        if (n.localName === 'default' || n.localName === 'checked') {
+          n.setAttributeNS(W, 'w:val', r.stages.includes(stages[i]) ? '1' : '0');
+        }
+      }
+    }
+  });
+
+  for (const [key, ix, head, tail] of [['equipment', 2, 1, 0], ['documents', 3, 2, 0], ['calibration', 6, 1, 1]]) {
+    repeat(t[ix], head, r[key], row => columns[key].map(([k, , format]) => format === 'date' ? displayDate(row[k]) : row[k]), tail);
+  }
+
+  setCell(children(children(t[3], 'tr')[0], 'tc')[0], `Reference Standards:${r.standards ? ` ${r.standards}` : ''}`, true);
+
+  const activityRows = children(t[4], 'tr');
+  const group = activityRows[1].cloneNode(true);
+  const subgroup = activityRows[2].cloneNode(true);
+  const seed = activityRows[3].cloneNode(true);
+  for (const row of activityRows.slice(1)) row.remove();
+
+  for (const [row, code, title] of [[group, r.activityGroupCode, r.activityGroup], [subgroup, r.activitySubgroupCode, r.activitySubgroup]]) {
+    if (code || title) {
+      const c = children(row, 'tc');
+      setCell(c[0], code, true);
+      setCell(c[1], title, true);
+      t[4].append(row);
+    }
+  }
+  t[4].append(seed);
+  const head = children(t[4], 'tr').length - 1;
+  repeat(t[4], head, r.activities, row => columns.activities.map(([k]) => row[k]));
+
+  // Section 5.0 Details of activities carried out (formatted as in FINAL_DOC.docx)
+  if(r.activityDetailsMode!=='template') fillActivityDetailsCell(doc, children(children(t[5], 'tr')[0], 'tc')[0], activityDetailsText(r));
+
+  // Conclusion (Table 7)
+  const conclusionCell = children(children(t[7], 'tr')[0], 'tc')[0];
+  for (const n of Array.from(conclusionCell.children)) if (n.localName !== 'tcPr') n.remove();
+  const concTitle = el(doc, 'p');
+  concTitle.append(run(doc, 'Conclusion: ', true));
+  conclusionCell.append(concTitle);
+  for (const line of String(r.conclusion || '').split('\n')) {
+    const p = el(doc, 'p');
+    const pPr = el(doc, 'pPr');
+    pPr.append(el(doc, 'pStyle', {val: 'ListParagraph'}), el(doc, 'ind', {left: '173'}));
+    p.append(pPr, run(doc, line, isCapsText(line)));
+    conclusionCell.append(p);
+  }
+
+  // Pending, Identification, Non-Conformities (Tables 8, 9, 10)
+  for (const [ix, label, val] of [
+    [8, 'Pending Activities: ', r.pending],
+    [9, 'Identification of the Inspected Items: ', r.identification],
+    [10, 'Non-Conformities raised / Discrepancies observed during Inspection:  ', r.nonconformities]
+  ]) {
+    const cell = children(children(t[ix], 'tr')[0], 'tc')[0];
+    for (const n of Array.from(cell.children)) if (n.localName !== 'tcPr') n.remove();
+    const p = el(doc, 'p');
+    p.append(run(doc, label, true), run(doc, String(val || ''), isCapsText(val)));
+    cell.append(p);
+  }
+
+  // Enclosure (Table 11)
+  fillEnclosuresCell(doc, children(children(t[11], 'tr')[0], 'tc')[0], r.enclosures);
+
+  const rels = parse(await zip.file('word/_rels/document.xml.rels').async('string'));
+  const types = parse(await zip.file('[Content_Types].xml').async('string'));
+  let imageIndex = 100;
+
+  function addImage(cell, data, maxW, maxH, description) {
+    if (!data) return;
+    const image = new Image();
+    return new Promise((resolve, reject) => {
+      image.onload = () => {
+        try {
+          const id = `rIdAES${imageIndex++}`;
+          const ext = data.startsWith('data:image/png') ? 'png' : 'jpeg';
+          const name = `aes-${imageIndex}.${ext}`;
+          zip.file(`word/media/${name}`, data.split(',')[1], {base64: true});
+          const rel = rels.createElementNS(REL, 'Relationship');
+          rel.setAttribute('Id', id);
+          rel.setAttribute('Type', `${R}/image`);
+          rel.setAttribute('Target', `media/${name}`);
+          rels.documentElement.append(rel);
+
+          if (!Array.from(types.documentElement.children).some(n => n.getAttribute('Extension') === ext)) {
+            const n = types.createElementNS(types.documentElement.namespaceURI, 'Default');
+            n.setAttribute('Extension', ext);
+            n.setAttribute('ContentType', `image/${ext}`);
+            types.documentElement.append(n);
+          }
+
+          const scale = Math.min(maxW / image.width, maxH / image.height);
+          const cx = Math.round(image.width * scale * 12700);
+          const cy = Math.round(image.height * scale * 12700);
+          const fragment = parse(`<w:p xmlns:w="${W}" xmlns:r="${R}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${imageIndex}" name="Inspection image ${imageIndex}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="${name}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${id}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`);
+          const p = doc.importNode(fragment.documentElement, true);
+          p.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing', 'docPr')[0].setAttribute('descr', description || '');
+          for (const n of children(cell, 'p')) n.remove();
+          cell.append(p);
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      };
+      image.onerror = () => reject(Error('An image could not be included in the report.'));
+      image.src = data;
+    });
+  }
+
+  const photoRows = children(t[12], 'tr');
+  const pictureSeed = photoRows[0].cloneNode(true);
+  const captionSeed = photoRows[1].cloneNode(true);
+  photoRows.forEach(n => n.remove());
+
+  for (let i = 0; i < r.photos.length; i += 2) {
+    const pr = pictureSeed.cloneNode(true);
+    const cr = captionSeed.cloneNode(true);
+    for (const [j, photo] of [r.photos[i], r.photos[i + 1]].entries()) {
+      setCell(children(pr, 'tc')[j], '');
+      setCell(children(cr, 'tc')[j], photo?.caption || '', true);
+      if (photo) await addImage(children(pr, 'tc')[j], photo.data, 250, 182, photo.caption);
+    }
+    const prop = children(pr, 'trPr')[0] || el(doc, 'trPr');
+    if (!prop.parentNode) pr.prepend(prop);
+    prop.append(el(doc, 'cantSplit'));
+    for (const p of all(pr, 'p')) {
+      const pp = children(p, 'pPr')[0] || el(doc, 'pPr');
+      if (!pp.parentNode) p.prepend(pp);
+      pp.append(el(doc, 'keepNext'));
+    }
+    t[12].append(pr, cr);
+  }
+  if (!r.photos.length) {
+    const row = captionSeed.cloneNode(true);
+    children(row, 'tc').forEach(c => setCell(c, ''));
+    t[12].append(row);
+  }
+
+  repeat(t[13], 1, r.expenses, row => [r.expenses.indexOf(row) + 1, displayDate(row.date), timeText(row.entry), timeText(row.exit), row.travel, row.km ? `${row.km} KM` : '']);
+
+  const signs = children(t[14], 'tr');
+  const fields = children(signs[2], 'tc');
+  [r.inspector, displayDate(r.inspectorDate), r.reviewer, displayDate(r.reviewerDate)].forEach((value, i) => setCell(fields[i * 2 + 1], value));
+  const sigcells = children(signs[1], 'tc');
+  await addImage(sigcells[0], r.inspectorSignature, 160, 55, 'Inspector signature');
+  await addImage(sigcells[1], r.reviewerSignature, 160, 55, 'Reviewer signature');
+
+  zip.file('word/document.xml', serialize(doc));
+  zip.file('word/_rels/document.xml.rels', serialize(rels));
+  zip.file('[Content_Types].xml', serialize(types));
+
+  for (const name of Object.keys(zip.files).filter(n => /^word\/header\d+\.xml$/.test(n))) {
+    const h = parse(await zip.file(name).async('string'));
+    for (const n of all(h, 't')) {
+      n.textContent = n.textContent
+        .replace('{{reportNo}}', r.reportNo)
+        .replace('{{revision}}', r.revision)
+        .replace('{{reportDate}}', displayDate(r.reportDate));
+    }
+    zip.file(name, serialize(h));
+  }
+
+  // Recalculate the template's PAGE and NUMPAGES fields when opened in Word.
+  const settings = parse(await zip.file('word/settings.xml').async('string'));
+  let update = all(settings, 'updateFields')[0];
+  if (!update) {
+    update = el(settings, 'updateFields');
+    settings.documentElement.append(update);
+  }
+  update.setAttributeNS(W, 'w:val', 'true');
+  zip.file('word/settings.xml', serialize(settings));
+
+  return zip.generateAsync({type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression: 'DEFLATE'});
 }
