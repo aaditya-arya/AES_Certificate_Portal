@@ -50,7 +50,7 @@ npm run dev -- --port 5173
 node tests/browser.mjs
 ```
 
-The integration script checks linked text, row counts, added rows, captions, exports, specimen-data removal, draft persistence, backup/restore, the reference example, and mobile overflow. It writes verification files to the ignored `test-results/` directory. The generated Word files have also been checked by opening and exporting them with Microsoft Word on the development computer.
+The integration script checks linked text, row counts, added rows, captions, exports, specimen-data removal, draft persistence, backup/restore, the reference example, and mobile overflow. It writes verification files to the ignored `test-results/` directory. A generated Word file has also been opened and its page rendering inspected in Microsoft Word on the development computer. Automated Word-to-PDF conversion could not be completed in that environment; direct PDF generation is tested independently.
 
 ## Source layout
 
