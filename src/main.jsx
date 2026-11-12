@@ -7,20 +7,21 @@ import {
   CheckCircle2, Clock3, Search, Download, Upload, ImagePlus, Images, Trash2,
   Copy, FolderOpen, LayoutDashboard, ClipboardCheck, Settings2, ShieldCheck,
   Link2, Users, FileCheck2, X, Menu, Eye, Loader2, AlertCircle, MoveUp,
-  MoveDown, BookOpen, HardDrive, SlidersHorizontal
+  MoveDown, HardDrive, SlidersHorizontal, Pencil, RotateCcw
 } from 'lucide-react';
 import {
   newReport, blankRow, sections, stages, columns, narrative, location,
   locationOrganization, requester, displayDate, endDateDisplay, accreditationType,
   parseDateToIso, isCapsText, defaultActivityDetails, defaultConclusion,
   defaultPending, defaultIdentification, defaultNonconformities, defaultEnclosures,
-  po, issues, stepDone, progress, loadExample, validateImport, calibrationRemark, uid,
+  po, issues, stepDone, validateImport, calibrationRemark, uid, filterReports,
   hydrateReport, searchReportFields, sectionForField, activityDetailsText, fieldCatalog, searchableFields
 } from './model';
 import {readReports, saveReports, backup, download, imageFile} from './storage';
 import {DateInput, ReportTextarea, ReportDetailRow} from './form-controls';
 import './styles.css';
 import './accessibility.css';
+import './workspace.css';
 
 const icons = [FileText, Settings2, ClipboardCheck, FileCheck2, Images, Users, Eye];
 
@@ -115,33 +116,27 @@ function Card({title, subtitle, number, action, children, className = ''}) {
   );
 }
 
-function EditableTable({type, rows, onChange, title = 'Add row', topRows = null}) {
+function EditableTable({type, rows, onChange, title = 'Add row'}) {
   const [pendingRemoval,setPendingRemoval] = useState(null);
   const defs = columns[type];
+  const entryName={equipment:'Equipment item',documents:'Reference document',activities:'Inspection activity',calibration:'Instrument',expenses:'Visit entry',persons:'Person'}[type];
   const edit = (id, key, value) => onChange(rows.map(x => x.id === id ? {...x, [key]: value} : x));
   return (
-    <div className="editable-table">
-      <div className="table-scroll" role="region" aria-label={`${type} entries`} tabIndex={0}>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col" className="row-index">Sr.</th>
-              {defs.map(([key, label]) => <th scope="col" key={key}>{label}</th>)}
-              <th scope="col" className="action-col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {topRows}
+    <div className={`entry-list ${type}-entries`}>
             {rows.map((row, index) => (
-              <tr key={row.id}>
-                <td className="row-index">{String(index + 1).padStart(2, '0')}</td>
+              <fieldset className="entry-card" key={row.id}>
+                <legend>{entryName} {String(index + 1).padStart(2, '0')}</legend>
+                <div className="entry-fields">
                 {defs.map(([key, label, format, placeholder]) => {
                   const val = row[key] ?? '';
                   const cellBold = isCapsText(val);
+                  const id=`entry-${row.id}-${key}`;
                   return (
-                    <td key={key} data-field-path={`${type}.${row.id}.${key}`}>
+                    <div className={`field ${key==='description'||key==='instrument'?'wide':''}`} key={key} data-field-path={`${type}.${row.id}.${key}`}>
+                      <label htmlFor={id}>{label}</label>
                       {format === 'scope' ? (
                         <select
+                          id={id}
                           aria-label={`${label} row ${index + 1}`}
                           value={val}
                           className={cellBold ? 'caps-bold' : ''}
@@ -151,11 +146,12 @@ function EditableTable({type, rows, onChange, title = 'Add row', topRows = null}
                           {['R', 'W', 'RW', 'V', 'H'].map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       ) : format === 'textarea' || key === 'description' ? (
-                        <ReportTextarea aria-label={`${label} row ${index+1}`} value={val}
+                        <ReportTextarea id={id} aria-label={`${label} row ${index+1}`} value={val}
                           rows={type==='equipment'?3:2} placeholder={placeholder||'Enter description'}
                           onChange={e=>edit(row.id,key,e.target.value)}/>
                       ) : format === 'date' ? (
                         <DateInput
+                          id={id}
                           ariaLabel={`${label} row ${index + 1}`}
                           value={val}
                           placeholder={placeholder || 'DD.MM.YYYY'}
@@ -163,6 +159,7 @@ function EditableTable({type, rows, onChange, title = 'Add row', topRows = null}
                         />
                       ) : (
                         <input
+                          id={id}
                           aria-label={`${label} row ${index + 1}`}
                           type={format || 'text'}
                           min={format === 'number' ? '0' : undefined}
@@ -172,25 +169,23 @@ function EditableTable({type, rows, onChange, title = 'Add row', topRows = null}
                           onChange={e => edit(row.id, key, e.target.value)}
                         />
                       )}
-                    </td>
+                    </div>
                   );
                 })}
-                <td className="action-col">
+                </div>
+                <div className="entry-actions">
                   <button
-                    className="icon-button remove-row"
-                    aria-label={`Remove ${type} row ${index + 1}`}
+                    type="button" className="button remove-row danger-text"
+                    aria-label={`Remove ${entryName.toLowerCase()} ${index + 1}`}
                     title="Remove row"
                     disabled={rows.length === 1}
                     onClick={() => Object.entries(row).some(([k,v])=>k!=='id'&&String(v).trim()) ? setPendingRemoval(row.id) : onChange(rows.filter(x=>x.id!==row.id))}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} /><span>Remove {entryName.toLowerCase()}</span>
                   </button>
-                </td>
-              </tr>
+                </div>
+              </fieldset>
             ))}
-          </tbody>
-        </table>
-      </div>
       <button type="button" className="add-row" onClick={() => onChange([...rows, blankRow(type)])}>
         <Plus size={16} />
         {title}
@@ -278,8 +273,11 @@ function App() {
   const [dirty, setDirty] = useState(false);
   const snapshotRef = useRef(null);
 
-  // Dashboard multi-filter states matching the user's screenshot
   const [search, setSearch] = useState('');
+  const [searchBy,setSearchBy]=useState('all');
+  const [accreditationFilter,setAccreditationFilter]=useState('');
+  const [dateFrom,setDateFrom]=useState('');
+  const [dateTo,setDateTo]=useState('');
   const [stageFilter, setStageFilter] = useState('');
   const [filter, setFilter] = useState('all');
 
@@ -290,7 +288,7 @@ function App() {
   const [mobile, setMobile] = useState(false);
   const [smallScreen,setSmallScreen]=useState(()=>matchMedia('(max-width:820px)').matches);
   const sidebarRef=useRef(null),mobileMenuRef=useRef(null);
-  const sidebarHidden=smallScreen?!mobile:sidebarCollapsed;
+  const sidebarHidden=smallScreen&&!mobile;
   useEffect(()=>{const query=matchMedia('(max-width:820px)');const change=()=>{setSmallScreen(query.matches);if(!query.matches)setMobile(false);};query.addEventListener('change',change);return()=>query.removeEventListener('change',change);},[]);
   useEffect(()=>{
     if(!mobile||!smallScreen)return;
@@ -407,21 +405,6 @@ function App() {
     });
   };
 
-  const example = () => requestLeave(async () => {
-    setBusy('example');
-    try {
-      const next = await loadExample();
-      setReports(prev => [next, ...prev]);
-      open(next);
-      alert('Reference example loaded as a new draft. Add your own signatures.');
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setBusy('');
-      setModal(null);
-    }
-  });
-
   const manualSave = async () => {
     clearTimeout(saveTimer.current);
     setSaveState('saving');
@@ -537,19 +520,10 @@ function App() {
 
   const reportIssues = r ? issues(r) : [];
 
-  const matchesSearch=report=>{
-    const words=search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    const values=searchableFields(report).map(f=>f.value).join(' ').toLocaleLowerCase();
-    return words.every(word=>values.includes(word));
-  };
-
-  const filtered = reports.filter(report => {
-    if (filter !== 'all' && report.status !== filter) return false;
-    if (stageFilter && !(report.stages || []).includes(stageFilter)) return false;
-    return matchesSearch(report);
-  });
-
-  const completedStepsCount = r ? sections.filter((_, idx) => stepDone(r, idx)).length : 0;
+  const filtered=filterReports(reports,{search,searchBy,stage:stageFilter,status:filter,accreditation:accreditationFilter,dateFrom,dateTo});
+  const accreditationOptions=[...new Set(reports.map(accreditationType).filter(Boolean))].sort();
+  const hasFilters=Boolean(search||searchBy!=='all'||stageFilter||filter!=='all'||accreditationFilter||dateFrom||dateTo);
+  const resetFilters=()=>{setSearch('');setSearchBy('all');setStageFilter('');setFilter('all');setAccreditationFilter('');setDateFrom('');setDateTo('');};
   const activeSearchQuery = formSearch.trim();
   const searchResults = r && activeSearchQuery ? searchReportFields(r,activeSearchQuery) : [];
   const isStepVisible=idx=>showAllSteps||step===idx;
@@ -573,11 +547,7 @@ function App() {
           <span>Inspection reports</span>
           <span className="nav-count">{reports.length}</span>
         </button>
-        <button className="nav-item" onClick={() => setModal({type: 'template'})}>
-          <BookOpen size={18} />
-          <span>Report template</span>
-          <ArrowUpRight size={15} />
-        </button>
+
 
         {r ? (
           <>
@@ -597,10 +567,10 @@ function App() {
                     onClick={() => { setShowAllSteps(false); setFormSearch(''); navigate(i); }}
                   >
                     <span className="step-circle">
-                      {done ? <Check size={14} /> : String(i + 1).padStart(2, '0')}
+                      {String(i + 1).padStart(2, '0')}
                     </span>
                     <span>{title}</span>
-                    {done && <span className="step-done-pill">Done</span>}
+                    {done && <Check className="section-reviewed" size={16} aria-label="Reviewed"/>}
                     {step === i && !done && <ChevronRight size={15} />}
                   </button>
                 );
@@ -631,7 +601,7 @@ function App() {
               type="button"
               className="sidebar-toggle-button"
               aria-label={sidebarCollapsed ? 'Menu: expand sidebar' : 'Menu: collapse sidebar'}
-              title={sidebarCollapsed ? 'Show left sidebar' : 'Hide left sidebar'}
+              title={sidebarCollapsed ? 'Expand workspace sidebar' : 'Keep section navigation only'}
               aria-expanded={!sidebarCollapsed} aria-controls="report-sidebar"
               onClick={() => {
                 if (window.innerWidth <= 820) setMobile(true);
@@ -688,12 +658,16 @@ function App() {
               </div>
 
               <section className="reports-section">
-                <div className="report-list-heading"><h2>Your reports <span>{filtered.length}</span></h2></div>
-                <div className="portal-filter-bar">
-                  <div className="filter-control report-search-control"><label htmlFor="report-search">Search reports</label><div className="report-search-input"><Search size={19}/><input id="report-search" aria-label="Search reports" placeholder="Report no., client, project or any entered value" value={search} onChange={e=>setSearch(e.target.value)}/></div></div>
+                <div className="report-list-heading"><h2>Your reports</h2><span role="status">{filtered.length} of {reports.length} reports</span></div>
+                <div className="portal-filter-bar" role="search" aria-label="Find inspection reports">
+                  <div className="filter-control"><label htmlFor="search-by">Search by</label><select id="search-by" value={searchBy} onChange={e=>setSearchBy(e.target.value)}>{[['all','All report fields'],['reportNo','Report number'],['client','Client'],['project','Project'],['manufacturer','Manufacturer / supplier'],['location','Inspection location'],['inspector','Inspector name'],['equipment','Equipment description']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></div>
+                  <div className="filter-control report-search-control"><label htmlFor="report-search">Search reports</label><div className="report-search-input"><Search size={20}/><input id="report-search" type="search" aria-label="Search reports" placeholder={searchBy==='all'?'Search any report field…':'Type to filter reports…'} value={search} onChange={e=>setSearch(e.target.value)}/></div></div>
+                  <div className="filter-control"><label htmlFor="accreditation-filter">Accreditation type</label><select id="accreditation-filter" value={accreditationFilter} onChange={e=>setAccreditationFilter(e.target.value)}><option value="">All types</option>{accreditationOptions.map(value=><option key={value}>{value}</option>)}</select></div>
                   <div className="filter-control"><label htmlFor="stage-filter">Inspection stage</label><select id="stage-filter" value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option value="">All stages</option>{stages.map(value=><option key={value}>{value}</option>)}</select></div>
                   <div className="filter-control"><label htmlFor="draft-filter">Report status</label><select id="draft-filter" value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">All reports</option><option value="draft">Draft</option><option value="ready">Ready</option></select></div>
-                  {(search||stageFilter||filter!=='all')&&<Button onClick={()=>{setSearch('');setStageFilter('');setFilter('all');}}>Clear filters</Button>}
+                  <div className="filter-control"><label htmlFor="date-from">Inspection date from</label><input id="date-from" type="date" value={dateFrom} max={dateTo||undefined} onChange={e=>setDateFrom(e.target.value)}/></div>
+                  <div className="filter-control"><label htmlFor="date-to">Inspection date to</label><input id="date-to" type="date" value={dateTo} min={dateFrom||undefined} onChange={e=>setDateTo(e.target.value)}/></div>
+                  <Button icon={RotateCcw} className="reset-filters" disabled={!hasFilters} onClick={resetFilters}>Reset filters</Button>
                 </div>
 
                 {filtered.length ? (
@@ -709,7 +683,7 @@ function App() {
                         <td data-label="Actions"><div className="report-actions">
                           <Button icon={FileText} disabled={!!busy} onClick={()=>exportReport('word',report.status!=='ready',report)}>Word</Button>
                           <Button icon={Download} disabled={!!busy} onClick={()=>exportReport('pdf',report.status!=='ready',report)}>PDF</Button>
-                          <Button className="primary" onClick={()=>open(report)}>Open</Button>
+                          <Button className="primary" icon={Pencil} onClick={()=>open(report)}>Edit</Button>
                           <Button aria-label={`More actions for ${report.reportNo||'report'}`} onClick={()=>setModal({type:'report-actions',id:report.id})}>More</Button>
                         </div></td>
                       </tr>)}</tbody>
@@ -718,9 +692,9 @@ function App() {
                 ) : (
                   <div className="empty-state">
                     <span className="empty-icon"><FolderOpen size={30} /></span>
-                    <h3>{search || filter !== 'all' || stageFilter ? 'No matching reports' : 'No inspection reports yet'}</h3>
-                    <p>{search || filter !== 'all' || stageFilter ? 'Try clearing or adjusting your search filters above.' : 'Create a report to begin your next inspection.'}</p>
-                    {!search && filter === 'all' && !stageFilter && (
+                    <h3>{hasFilters ? 'No matching reports' : 'No inspection reports yet'}</h3>
+                    <p>{hasFilters ? 'Try clearing or adjusting your search filters above.' : 'Create a report to begin your next inspection.'}</p>
+                    {!hasFilters && (
                       <Button className="primary" icon={Plus} onClick={add}>Create your first report</Button>
                     )}
                   </div>
@@ -755,21 +729,6 @@ function App() {
                   </Button>
                   <Button icon={saveState === 'saving' ? Loader2 : Check} className="primary" onClick={manualSave}>Save draft</Button>
                 </div>
-
-              {/* 1st to 7th Step Progress Bar */}
-              <div className="stepper-panel" role="region" aria-label="Report completion">
-                <div className="stepper-header">
-                  <div>
-                    <strong>Report progress</strong>
-                    <span> {completedStepsCount} of 7 steps complete</span>
-                  </div>
-                  <b>{progress(r)}% Complete</b>
-                </div>
-                <div className="stepper-track-bar" role="progressbar" aria-label="Completed report steps" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress(r)}>
-                  <span style={{width: `${progress(r)}%`}} />
-                </div>
-              </div>
-
 
               {/* Form Search & View All Fields Bar */}
               <div className="form-utility-bar">
@@ -947,59 +906,18 @@ function App() {
                           <span><b>V</b> · Verification</span>
                           <span><b>H</b> · Hold</span>
                         </div>
+                        <div className="activity-headings form-grid">
+                          {field('activityGroupCode','Group clause',{placeholder:'e.g. B',alwaysBold:true})}
+                          {field('activityGroup','Group heading',{placeholder:'e.g. IN-PROCESS',alwaysBold:true})}
+                          {field('activitySubgroupCode','Subgroup clause',{placeholder:'e.g. 4',alwaysBold:true})}
+                          {field('activitySubgroup','Subgroup heading',{placeholder:'e.g. TANKING',alwaysBold:true})}
+                        </div>
                         <EditableTable
                           type="activities"
                           rows={r.activities}
                           onChange={v => update('activities', v)}
                           title="Add activity row"
-                          topRows={
-                            <>
-                              <tr className="table-group-row">
-                                <td className="row-index"><span className="hdr-tag">HDR 1</span></td>
-                                <td>
-                                  <input
-                                    data-field-path="activityGroupCode" aria-label="Group clause"
-                                    value={r.activityGroupCode}
-                                    placeholder="e.g. B"
-                                    className="caps-bold"
-                                    onChange={e => update('activityGroupCode', e.target.value)}
-                                  />
-                                </td>
-                                <td colSpan={3}>
-                                  <input
-                                    data-field-path="activityGroup" aria-label="Group heading"
-                                    value={r.activityGroup}
-                                    placeholder="Main section heading in CAPITALS (e.g. IN-PROCESS) — prints in BOLD across columns"
-                                    className="caps-bold"
-                                    onChange={e => update('activityGroup', e.target.value)}
-                                  />
-                                </td>
-                                <td className="action-col"><span className="bold-pill">BOLD</span></td>
-                              </tr>
-                              <tr className="table-group-row">
-                                <td className="row-index"><span className="hdr-tag">HDR 2</span></td>
-                                <td>
-                                  <input
-                                    data-field-path="activitySubgroupCode" aria-label="Subgroup clause"
-                                    value={r.activitySubgroupCode}
-                                    placeholder="e.g. 4"
-                                    className="caps-bold"
-                                    onChange={e => update('activitySubgroupCode', e.target.value)}
-                                  />
-                                </td>
-                                <td colSpan={3}>
-                                  <input
-                                    data-field-path="activitySubgroup" aria-label="Subgroup heading"
-                                    value={r.activitySubgroup}
-                                    placeholder="Sub-section heading in CAPITALS (e.g. TANKING) — prints in BOLD across columns"
-                                    className="caps-bold"
-                                    onChange={e => update('activitySubgroup', e.target.value)}
-                                  />
-                                </td>
-                                <td className="action-col"><span className="bold-pill">BOLD</span></td>
-                              </tr>
-                            </>
-                          }
+
                         />
                       </Card>
 
@@ -1383,31 +1301,7 @@ function App() {
                   </div>
                 </div>
 
-                <aside className="context-column">
-                  <div className="context-card">
-                    <span className="context-eyebrow"><FileText size={15} /> THE REPORT</span>
-                    <h3>AES Report<br />Format.</h3>
-                    <p>Every field matches the exact structure of AESPL/IR/01.</p>
-                    <div className="context-divider" />
-                    <dl>
-                      <div><dt>Format</dt><dd>AESPL/IR/01</dd></div>
-                      <div><dt>Template revision</dt><dd>00</dd></div>
-                      <div><dt>Effective date</dt><dd>01.04.2026</dd></div>
-                    </dl>
-                    <button onClick={() => setModal({type: 'template'})}>View template details <ArrowUpRight size={14} /></button>
-                  </div>
-                  <div className="context-tip">
-                    <span><Link2 size={18} /></span>
-                    <h4>Quick Download & Search.</h4>
-                    <p>
-                      Use the search bar above the form to find any field across all 7 steps, or use the Word (.docx) and PDF (.pdf) buttons to download at any step.
-                    </p>
-                  </div>
-                  <div className="context-save">
-                    <ShieldCheck size={17} />
-                    <span>Your draft is stored<br />in this browser.</span>
-                  </div>
-                </aside>
+
               </div>
             </>
           )}
@@ -1465,32 +1359,6 @@ function App() {
           <div className="modal-actions">
             <Button onClick={() => setModal(null)}>Keep report</Button>
             <Button className="danger-button" icon={Trash2} onClick={() => remove(modal.id)}>Delete report</Button>
-          </div>
-        </Modal>
-      )}
-
-      {modal?.type === 'template' && (
-        <Modal title="Your AES report format" onClose={() => setModal(null)}>
-          <p className="modal-copy">The report follows FINAL_DOC.docx and Format_Filled_Required.pdf across all eight sections.</p>
-          <ol className="template-sections">
-            {[
-              'Header & General Table (Rows 01–10) + 1.0 Stage of Inspection',
-              '2.0 Name of Equipment / Inspected Item',
-              '3.0 Reference Documents',
-              '4.0 Inspection Activities as per ITP/QAP/MQP (with Bold Capital Headings)',
-              '5.0 Details of activities carried out (comes as it is)',
-              '6.0 Calibration Details & Findings Boxes',
-              '7.0 Inspection Photographs (2-column bordered grid)',
-              '8.0 Expenditure Report & Sign-off'
-            ].map(x => <li key={x}>{x}</li>)}
-          </ol>
-          <div className="info-note">
-            <Link2 size={18} />
-            <p>Dates can be both typed and selected from the calendar. Capital entries display in Bold while typing.</p>
-          </div>
-          <div className="modal-actions">
-            <a className="button" href="/report-template.docx" download="AES-Report-Template.docx"><Download size={16} />Download clean template</a>
-            <Button className="primary" disabled={!!busy} onClick={example}>Open reference example</Button>
           </div>
         </Modal>
       )}

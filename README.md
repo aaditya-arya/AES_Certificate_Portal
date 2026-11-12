@@ -15,14 +15,14 @@ Open the Local URL printed by Vite. For production, run `npm run build` and serv
 
 ## Report workflow
 
-1. Create a report or open the supplied reference example as a separate draft.
+1. Create a report, or restore an existing JSON backup.
 2. Complete the seven editor steps, covering all eight numbered report sections.
 3. Review the required fields and export Word or PDF. Draft export is available while fields are incomplete.
 4. Download a JSON backup to preserve the editable report and its photographs.
 
-The interface uses 16 px form text and 44–48 px primary controls. The report library contains search, stage/status filters, and direct Word, PDF, and Open actions. Extra report actions are under More. The sidebar menu can be collapsed, and becomes a drawer on smaller screens.
+The editor uses 18 px input text, clear field labels, and 48–54 px main controls. Repeatable entries appear as numbered cards with their own labels, full-width descriptions and plus buttons. The report library offers selected-field search, accreditation, stage, status and inspection-date filters with a single reset action. Each report has Edit, Word and PDF actions; duplication and deletion are under More. The compact desktop sidebar keeps all seven section names visible and clickable, while smaller screens use a navigation drawer. Template buttons and the progress bar have been removed.
 
-Use **Complete step & continue** to review each step. The progress bar counts reviewed steps, rather than prefilled fields. Editing a reviewed section invalidates that step and the final review. Optional photographs can be omitted while still completing their review step. **View all sections** shows the whole report in document order; its footer can confirm all displayed sections after validation. Form search looks through field names, guidance, and entered values, including table cells and photograph descriptions, and focuses the selected field.
+Use **Complete step & continue** to review each step. Reviewed sections receive a check in the sidebar. Editing a reviewed section invalidates that step and the final review. Optional photographs can be omitted while still completing their review step. **View all sections** shows the whole report in document order; its footer can confirm all displayed sections after validation. Form search looks through field names, guidance, and entered values, including table cells and photograph descriptions, and focuses the selected field.
 
 Every report date can be typed (DD.MM.YYYY, DD/MM/YYYY, or ISO) or chosen through its keyboard-accessible calendar button. Invalid calendar dates are rejected by review validation and identified beside the input.
 
@@ -58,6 +58,7 @@ npm run build
 npm run dev -- --port 5174
 # In another terminal, with Google Chrome installed:
 node tests/browser.mjs
+node tests/workspace-browser.mjs
 # Override the test URL when using another port:
 $env:AES_TEST_URL='http://127.0.0.1:5173'
 node tests/browser.mjs
@@ -70,6 +71,7 @@ The integration script checks typed and calendar dates, invalid dates, live uppe
 - `src/model.js`: field schema, linked values, validation, reference example, backup import validation.
 - `src/form-controls.jsx`: accessible typed/calendar dates, multiline live bold rendering, and report-detail rows.
 - `src/accessibility.css`: contrast, focus, control boundaries, reflow and reduced-height adjustments.
+- `src/workspace.css`: daily-use typography, compact section navigation, filters and labelled entry cards.
 - `src/focus.js`: dialog/drawer keyboard containment, focus restoration and shared scroll locking.
 - `src/standard-activity.json`: section 5.0 paragraphs extracted from the original Word document.
 - `src/main.jsx`: report library, form editor, review and export interactions.

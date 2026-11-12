@@ -1,6 +1,20 @@
 import standardActivity from './standard-activity.json' with {type:'json'};
 export const stages = ['Pre-Inspection Meeting', 'In-Process Inspection', 'Final Inspection', 'Pre-Shipment Inspection'];
 export const sections = ['Report details', 'Equipment & documents', 'Inspection activities', 'Findings & calibration', 'Photographs', 'Expenditure & sign-off', 'Review & export'];
+
+export function filterReports(reports, {search='',searchBy='all',stage='',status='all',accreditation='',dateFrom='',dateTo=''}={}) {
+  const words=search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  return reports.filter(report=>{
+    if(status!=='all'&&report.status!==status)return false;
+    if(stage&&!(report.stages||[]).includes(stage))return false;
+    if(accreditation&&accreditationType(report)!==accreditation)return false;
+    const date=parseDateToIso(report.inspectionDate);
+    if(dateFrom&&(!date||date<dateFrom))return false;
+    if(dateTo&&(!date||date>dateTo))return false;
+    const value=searchBy==='all'?searchableFields(report).map(f=>f.value).join(' '):searchBy==='location'?location(report,true):searchBy==='equipment'?(report.equipment||[]).map(row=>row.description).join(' '):String(report[searchBy]??'');
+    return words.every(word=>value.toLocaleLowerCase().includes(word));
+  });
+}
 export const today = () => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
 export function parseDateToIso(value) {

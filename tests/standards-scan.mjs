@@ -1,3 +1,4 @@
+import {restoreSample} from './sample-backup.mjs';
 import {expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import assert from 'node:assert/strict';
@@ -32,14 +33,15 @@ async function dialogKeyboard(name){
 try{
   await page.goto(origin);await page.getByRole('heading',{name:'Inspection reports.'}).waitFor();await scan('library-empty');
   for(const width of widths){await resize(width);await layout(`empty-library-${width}`);}
-  await resize(1440);const templateButton=page.getByRole('button',{name:'Report template',exact:false});await templateButton.click();await scan('template-dialog');await dialogKeyboard('Your AES report format');await expect(templateButton).toBeFocused();
-  await templateButton.click();await page.getByRole('button',{name:'Open reference example',exact:true}).click();await page.getByLabel('Client name',{exact:true}).waitFor();
+  await resize(1440);const helpButton=page.getByRole('button',{name:'Help & storage',exact:false});await helpButton.click();await scan('storage-help-dialog');await dialogKeyboard('Reports & storage');await expect(helpButton).toBeFocused();
+  await restoreSample(page);await page.getByLabel('Client name',{exact:true}).waitFor();
   for(let index=0;index<7;index++){await chooseStep(index);await scan(`step-${index+1}-desktop`);}
+  await page.getByRole('button',{name:'Menu: collapse sidebar',exact:true}).click();await scan('compact-section-navigation');for(let index=0;index<7;index++){await chooseStep(index);await expect(page.locator('.steps .step').nth(index)).toHaveAttribute('aria-current','step');await layout(`compact-step-${index+1}`);}await page.getByRole('button',{name:'Menu: expand sidebar',exact:true}).click();
   for(const width of widths){await resize(width);for(let index=0;index<7;index++){await chooseStep(index);await layout(`step-${index+1}-${width}`);}console.log(`${browserName}: all seven steps fit ${width}px`);}
   await resize(320);await chooseStep(6);await scan('review-320px');
   await page.getByRole('button',{name:'Open navigation',exact:true}).click();const drawer=page.getByRole('dialog',{name:'Report navigation'});await scan('mobile-drawer');await expect(page.getByRole('button',{name:'Close navigation',exact:true})).toBeFocused();
   await page.keyboard.press('Shift+Tab');assert.ok(await drawer.evaluate(e=>e.contains(document.activeElement)));await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Close navigation',exact:true})).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Open navigation',exact:true})).toBeFocused();keyboard.push('mobile drawer: tab containment, Escape and focus restoration');
-  await page.getByRole('button',{name:'Open navigation',exact:true}).click();await page.getByRole('button',{name:'Report template',exact:false}).click();await scan('mobile-nested-dialog');await dialogKeyboard('Your AES report format');await expect(page.getByRole('button',{name:'Report template',exact:false})).toBeFocused();await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
+  await page.getByRole('button',{name:'Open navigation',exact:true}).click();await page.getByRole('button',{name:'Help & storage',exact:false}).click();await scan('mobile-nested-dialog');await dialogKeyboard('Reports & storage');await expect(page.getByRole('button',{name:'Help & storage',exact:false})).toBeFocused();await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
   await resize(1440);await chooseStep(0);
   await page.locator('.skip-link').focus();await page.keyboard.press('Enter');await expect(page.locator('#main-content')).toBeFocused();
   for(let i=0;i<24;i++){

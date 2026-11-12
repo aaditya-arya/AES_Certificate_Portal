@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {newReport,narrative,generalRows,location,displayDate,issues,validateImport,parseDateToIso,progress,stepDone,hydrateReport,searchReportFields,defaultActivityDetails,activityDetailsText} from '../src/model.js';
+import {newReport,narrative,generalRows,location,displayDate,issues,validateImport,parseDateToIso,progress,stepDone,hydrateReport,searchReportFields,defaultActivityDetails,activityDetailsText,filterReports} from '../src/model.js';
 
 test('each repeatable data table starts with one row while metadata stays fixed',()=>{
  const r=newReport();for(const key of ['equipment','documents','activities','calibration','expenses','persons'])assert.equal(r[key].length,1,key);assert.equal(r.photos.length,0);assert.equal(generalRows(r).length,10);
@@ -41,4 +41,12 @@ test('legacy reports retain their custom activity text and data during hydration
 test('a legacy Ready report with invalid data returns to draft without losing its values',()=>{
  const raw={...newReport(),status:'ready',reportDate:'31.02.2026',client:'Retain this client'};delete raw.completedSteps;
  const migrated=hydrateReport(raw);assert.equal(migrated.status,'draft');assert.equal(migrated.reportDate,'31.02.2026');assert.equal(migrated.client,'Retain this client');assert.ok(!migrated.completedSteps.includes(6));
+});
+
+test('report filters combine selected-field search, accreditation, stage, status and inclusive visit dates',()=>{
+ const a={...newReport(),reportNo:'AES/001',client:'Copper Client',project:'Transformer project',state:'Maharashtra',inspectionDate:'2026-11-07',status:'ready',stages:['Final Inspection']};a.calibration[0].traceability='NABL';a.equipment[0].description='Power transformer';a.documents[0].number='UNIQUE-DOC-12';
+ const b={...newReport(),reportNo:'AES/002',client:'Steel Client',project:'Copper project',state:'Gujarat',inspectionDate:'2026-11-10',stages:['Pre-Shipment Inspection']};b.calibration[0].traceability='NPL';
+ const c={...newReport(),reportNo:'AES/003',inspectionDate:''};const reports=[a,b,c];
+ assert.deepEqual(filterReports(reports,{search:'copper',searchBy:'client'}),[a]);assert.deepEqual(filterReports(reports,{search:'copper',searchBy:'project'}),[b]);assert.deepEqual(filterReports(reports,{search:'unique-doc-12'}),[a]);assert.deepEqual(filterReports(reports,{search:'power transformer',searchBy:'equipment'}),[a]);assert.deepEqual(filterReports(reports,{search:'Maharashtra',searchBy:'location'}),[a]);
+ assert.deepEqual(filterReports(reports,{search:'  COPPER client ',searchBy:'client',accreditation:'NABL',stage:'Final Inspection',status:'ready',dateFrom:'2026-11-07',dateTo:'2026-11-07'}),[a]);assert.deepEqual(filterReports(reports,{accreditation:'NPL',status:'draft',dateFrom:'2026-11-08'}),[b]);assert.deepEqual(filterReports(reports,{status:'ready',stage:'Pre-Shipment Inspection'}),[]);assert.deepEqual(filterReports(reports,{dateTo:'2026-11-07'}),[a]);assert.deepEqual(filterReports(reports),reports);
 });
