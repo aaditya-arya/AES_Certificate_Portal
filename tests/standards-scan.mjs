@@ -1,4 +1,4 @@
-import {restoreSample} from './sample-backup.mjs';
+import {seedSample} from './sample-report.mjs';
 import {expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import assert from 'node:assert/strict';
@@ -13,7 +13,8 @@ const scans=[],layouts=[],keyboard=[];const errors=[];page.on('pageerror',error=
 let passed=false;
 const widths=[320,375,390,640,768,820,1024,1440,1920];
 async function resize(width,height=900){await page.setViewportSize({width,height});await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));}
-async function chooseStep(index){if(page.viewportSize().width<=820)await page.getByRole('button',{name:'Open navigation',exact:true}).click();await page.locator('.steps .step').nth(index).click();}
+async function chooseStep(index){const buttons=page.viewportSize().width<=820?page.locator('.mobile-section-nav button'):page.locator('.steps .step');await buttons.nth(index).click();await expect(buttons.nth(index)).toHaveAttribute('aria-current','location');}
+
 async function layout(name){
   const result=await page.evaluate(()=>({width:innerWidth,contentWidth:document.documentElement.scrollWidth}));layouts.push({name,...result});assert.ok(result.contentWidth<=result.width+1,`${name}: content ${result.contentWidth}px exceeds viewport ${result.width}px`);
 }
@@ -34,14 +35,15 @@ try{
   await page.goto(origin);await page.getByRole('heading',{name:'Inspection reports.'}).waitFor();await scan('library-empty');
   for(const width of widths){await resize(width);await layout(`empty-library-${width}`);}
   await resize(1440);const helpButton=page.getByRole('button',{name:'Help & storage',exact:false});await helpButton.click();await scan('storage-help-dialog');await dialogKeyboard('Reports & storage');await expect(helpButton).toBeFocused();
-  await restoreSample(page);await page.getByLabel('Client name',{exact:true}).waitFor();
-  for(let index=0;index<7;index++){await chooseStep(index);await scan(`step-${index+1}-desktop`);}
-  await page.getByRole('button',{name:'Menu: collapse sidebar',exact:true}).click();await scan('compact-section-navigation');for(let index=0;index<7;index++){await chooseStep(index);await expect(page.locator('.steps .step').nth(index)).toHaveAttribute('aria-current','step');await layout(`compact-step-${index+1}`);}await page.getByRole('button',{name:'Menu: expand sidebar',exact:true}).click();
+  await seedSample(page);await page.getByLabel('Client name',{exact:true}).waitFor();
+  await expect(page.locator('[data-report-section]')).toHaveCount(7);await scan('continuous-form-desktop');
+  await scan('compact-section-navigation');for(let index=0;index<7;index++){await chooseStep(index);await layout(`compact-section-${index+1}`);}await page.getByRole('button',{name:'Expand sidebar',exact:true}).click();await scan('expanded-section-navigation');await page.getByRole('button',{name:'Collapse sidebar',exact:true}).click();
+
   for(const width of widths){await resize(width);for(let index=0;index<7;index++){await chooseStep(index);await layout(`step-${index+1}-${width}`);}console.log(`${browserName}: all seven steps fit ${width}px`);}
   await resize(320);await chooseStep(6);await scan('review-320px');
-  await page.getByRole('button',{name:'Open navigation',exact:true}).click();const drawer=page.getByRole('dialog',{name:'Report navigation'});await scan('mobile-drawer');await expect(page.getByRole('button',{name:'Close navigation',exact:true})).toBeFocused();
-  await page.keyboard.press('Shift+Tab');assert.ok(await drawer.evaluate(e=>e.contains(document.activeElement)));await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Close navigation',exact:true})).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Open navigation',exact:true})).toBeFocused();keyboard.push('mobile drawer: tab containment, Escape and focus restoration');
-  await page.getByRole('button',{name:'Open navigation',exact:true}).click();await page.getByRole('button',{name:'Help & storage',exact:false}).click();await scan('mobile-nested-dialog');await dialogKeyboard('Reports & storage');await expect(page.getByRole('button',{name:'Help & storage',exact:false})).toBeFocused();await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
+  await page.getByRole('button',{name:'Open sidebar',exact:true}).click();const drawer=page.getByRole('dialog',{name:'Report navigation'});await scan('mobile-drawer');await expect(page.getByRole('button',{name:'Close navigation',exact:true})).toBeFocused();
+  await page.keyboard.press('Shift+Tab');assert.ok(await drawer.evaluate(e=>e.contains(document.activeElement)));await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Close navigation',exact:true})).toBeFocused();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Open sidebar',exact:true})).toBeFocused();keyboard.push('mobile drawer: tab containment, Escape and focus restoration');
+  await page.getByRole('button',{name:'Open sidebar',exact:true}).click();await page.getByRole('button',{name:'Help & storage',exact:false}).click();await scan('mobile-nested-dialog');await dialogKeyboard('Reports & storage');await expect(page.getByRole('button',{name:'Help & storage',exact:false})).toBeFocused();await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.body.style.overflow),'');
   await resize(1440);await chooseStep(0);
   await page.locator('.skip-link').focus();await page.keyboard.press('Enter');await expect(page.locator('#main-content')).toBeFocused();
   for(let i=0;i<24;i++){
@@ -50,13 +52,13 @@ try{
     assert.ok(visible.ok,`Keyboard focus is offscreen or covered: ${visible.name}`);
   }
   keyboard.push('skip link and 24 consecutive visible keyboard focus positions');
-  for(let index=0;index<6;index++){await chooseStep(index);await page.getByRole('button',{name:'Complete step & continue',exact:true}).click();}
+  await chooseStep(6);
   await page.getByRole('button',{name:'Mark as ready for export',exact:true}).click();await scan('review-ready');
   await page.getByRole('button',{name:'All inspection reports',exact:true}).click();await scan('library-populated');
   for(const width of widths){await resize(width);await layout(`populated-library-${width}`);}
-  await resize(1440);await page.getByRole('button',{name:'Create report',exact:true}).click();await page.getByRole('button',{name:'Complete step & continue',exact:true}).click();await scan('required-field-errors');
+  await resize(1440);await page.getByRole('button',{name:'Create report',exact:true}).click();await chooseStep(6);await scan('required-field-errors');
   await resize(320);await scan('required-field-errors-320px');await layout('required-field-errors-320px');
-  await resize(1440);await page.getByRole('button',{name:'View all sections',exact:true}).click();await scan('all-sections-view');await resize(320);await layout('all-sections-view-320px');
+  await resize(1440);await page.getByRole('textbox',{name:'Search fields inside this form'}).fill('reviewer');await scan('field-search-results');await resize(320);await layout('field-search-results-320px');
   assert.deepEqual(errors,[]);
   passed=true;
   console.log(`${browserName}: ${scans.length} clean accessibility scans, ${layouts.length} responsive cases, keyboard checks passed.`);

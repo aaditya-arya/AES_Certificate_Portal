@@ -1,28 +1,20 @@
-# Portal audit and corrections
+# Portal verification
 
-The existing local implementation and both exported files supplied from Downloads were inspected before changes. Existing work was retained; a snapshot of the prior source is in the parent workspace's `analysis/revision-audit/before/` directory.
+Updated 13 November 2026 for the continuous form workflow. This supersedes the earlier step-by-step interface audit.
 
-| Requirement | What the inspected implementation did | Verified correction |
-|---|---|---|
-| Remove the promotional banner | Removed in local edits, while the selected hosted source still pointed at the earlier committed version. | The simplified source is built and published to the same existing Site. No promotional banner or summary cards remain. |
-| Proper sidebar control | Collapse controls existed in two places. | One large Menu control switches between the full workspace sidebar and compact section navigation. A large mobile menu opens the drawer. |
-| Consistent steps 1–7 | Completion was inferred from prefilled content. The percentage used a different formula from the step tracker, and an empty report's visual bar had a minimum fill. | Completion is recorded after review. The progress bar is removed. Numbered section links remain available in the compact sidebar, with an active section and review checks. Edits invalidate the affected step and final review. |
-| Safe navigation | The warning called autosaved edits “unsaved,” offered to overwrite them with the opening snapshot, and navigated even if manual saving failed. | Leave confirmation saves before navigating. Failed saves leave the editor open. Already autosaved changes are described truthfully. |
-| Search all form fields | Search matched a fixed list of section keywords. | Field names, guidance and entered scalar/table/photo values are indexed. Results jump to and focus the exact control. |
-| Select and type dates | Both controls existed, but parsing accepted impossible dates. The picker button was removed from keyboard tab order. | Dates can be typed or picked, calendar buttons are keyboard accessible, and real calendar dates are validated. |
-| Bold capitals while typing | Whole-field capitals worked; mixed-case multiline fields could not show bold uppercase lines. | Text fields and synchronized multiline editing show uppercase entries/lines in bold without replacing native editing, selection or undo. |
-| Original section 5.0 | Editable text and approximate formatting were reconstructed instead of retaining the original document section. | Default Word export leaves the original section XML unchanged. Existing custom reports retain their text and can be restored to the original with confirmation. |
-| Clear report order | Local edits had begun reordering the form, but repeated labels, row-output examples and fixed page claims added clutter. | Fields follow the ten metadata rows and eight numbered report sections. Repeatable entries use labelled cards instead of narrow table cells. Labels and examples identify what the user should enter; optional address components are explained. |
-| Accessible daily use | Numerous small actions, duplicate displays, decorative content and a fourteen-column list. | Main controls are at least 44–48 px high, input text is 18 px, report actions are labeled, and the report list keeps six practical columns. |
-| Correct exports | Long inspector names were truncated to the first PDF line. Some multi-page text boxes reused the prior page's border coordinate. | Full names wrap, and long activity text, findings and captions flow across pages without body text entering the footer. |
+| Requirement | Verified behavior |
+|---|---|
+| Continuous report entry | All seven sections stay on one page; normal scrolling and section links update the active section. No completion or next-page gates remain. |
+| Sidebar | Reports open with a transparent compact section rail. The sidebar panel slides away, seven section names stay available, and the icon-only control supports Ctrl+B and a hover shortcut hint. Mobile uses a drawer and a sticky seven-section strip. |
+| Compact filters | Search-by, search text, accreditation, stage, status and date bounds fit two desktop rows. Filters combine and Reset clears them. |
+| Remove Backup and Restore | JSON backup generation, import controls and validation are removed. Existing IndexedDB reports are retained. Automatic saving and Word/PDF downloads remain. |
+| Dates and capitals | Dates can be typed or selected, impossible dates are identified, and uppercase entries and multiline uppercase lines appear bold. |
+| Safe navigation | Leave confirmation saves before navigating. Failed saves keep the editor open. Populated entry, photo and report removal require confirmation. |
+| Search | Names, guidance and entered scalar, row and photo values are indexed. Search jumps to and focuses the actual field in the continuous document. |
+| Original section 5.0 | Default Word export preserves the original template section XML, including paragraph and run formatting. Existing custom text is retained until explicitly reset. |
+| Comfortable entry | Main inputs use 18 px text, repeatable entries have individual labels, and descriptions have room to wrap. |
+| Export fidelity | Word fills the original template. Direct PDF recreates the AES layout with automatic pagination, embedded fonts, photo captions and wrapped names. |
 
-## Checks performed
+Nine model tests cover dates, linked narrative fields, validation, search, compound filters and legacy report preservation. Browser tests cover the continuous workflow, navigation and focus, shortcut behavior, filters, removal confirmations, storage failures, persistence, Word/PDF downloads and original section 5.0 XML. Accessibility and responsive results are documented in [STANDARDS.md](STANDARDS.md).
 
-- Ten model tests pass, including impossible dates, completion, field-value search, compound report filters, backup validation and legacy report preservation.
-- Browser integration passes creation/editing, both date methods, live bold rendering, step completion/invalidation, field focus from search, row/photo confirmation, saving failure protection, Word/PDF downloads, PDF preview, backup/restore and mobile navigation/layout.
-- The default Word export's section 5.0 was structurally compared directly with **FINAL_DOC.docx**, including attributes, paragraphs and run formatting. It is identical.
-- The standard verification PDF contains the full inspector name and the last QAP clause.
-- A ten-page stress PDF retained all **130 activity tokens**, **200 finding tokens**, and **250 caption tokens**, plus the full long inspector name. Every page contains its page footer; measured body text stays within the content bounds.
-- Production build passes. Browser drafts remain local to their existing IndexedDB origin; existing report records are migrated in memory without deleting their values.
-
-Direct PDF export recreates the AES layout. For Microsoft Word's exact pagination and typography, save the exported `.docx` as PDF from Word. Section 5.0's original Word formatting is preserved independently of that conversion.
+The earlier stress export verification confirmed all 130 activity tokens, 200 finding tokens, 250 caption tokens and a long inspector name in a multi-page PDF. The current change leaves PDF generation unchanged. Direct PDF export can paginate differently from Microsoft Word; use Word's Save as PDF for its exact rendering.

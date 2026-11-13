@@ -339,53 +339,6 @@ export async function loadExample() {
   return r;
 }
 
-// Imports accept report data only; imported completion state must be rechecked.
-export function validateImport(data) {
-  const list = data?.format === 'aes-report-backup-v1' ? data.reports : null;
-  if (!Array.isArray(list) || !list.length || list.length > 200) {
-    throw Error('Choose a valid AES report backup (maximum 200 reports).');
-  }
-  return list.map(raw => {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw Error('Invalid report in backup.');
-    const seed = newReport();
-    const r = {...seed};
-    for (const key of Object.keys(seed)) {
-      if (key === 'completedSteps') { r.completedSteps = []; continue; }
-      if (Array.isArray(seed[key])) {
-        if (!Array.isArray(raw[key]) || raw[key].length > 1000) throw Error(`Invalid ${key} in backup.`);
-        if (key === 'stages') {
-          r.stages = raw.stages.filter(v => stages.includes(v));
-          continue;
-        }
-        r[key] = raw[key].map(row => {
-          if (!row || typeof row !== 'object') throw Error(`Invalid ${key} row.`);
-          const clean = {id: uid()};
-          for (const k of key === 'photos' ? ['data', 'caption', 'name'] : columns[key].map(c => c[0])) {
-            if (typeof row[k] !== 'string' || row[k].length > 20_000_000) throw Error(`Invalid ${key} value.`);
-            clean[k] = row[k];
-          }
-          if (key === 'photos' && !/^data:image\/(png|jpeg);base64,/.test(clean.data)) throw Error('Unsupported image in backup.');
-          return clean;
-        });
-        if (!r[key].length && key !== 'photos') r[key] = [blankRow(key)];
-      } else if (typeof seed[key] === 'string' && typeof raw[key] === 'string') {
-        r[key] = raw[key].slice(0, 100000);
-      } else if (typeof seed[key] === 'boolean' && typeof raw[key] === 'boolean') {
-        r[key] = raw[key];
-      }
-    }
-    for (const key of ['inspectorSignature', 'reviewerSignature']) {
-      if (r[key] && !/^data:image\/(png|jpeg);base64,/.test(r[key])) throw Error('Unsupported signature in backup.');
-    }
-    r.activityDetailsMode = raw.activityDetailsMode === 'template' ? 'template' : (raw.activityDetailsMode === 'custom' || raw.activityDetails !== defaultActivityDetails ? 'custom' : 'template');
-    r.id = uid();
-    r.status = 'draft';
-    r.updatedAt = new Date().toISOString();
-    return r;
-  });
-}
-
-
 export const fieldCatalog = [
   [0,'reportNo','Inspection visit report number','Report header reference'],
   [0,'revision','Revision','Report header revision'],[0,'reportDate','Report date','Header issue date','date'],

@@ -15,14 +15,15 @@ Open the Local URL printed by Vite. For production, run `npm run build` and serv
 
 ## Report workflow
 
-1. Create a report, or restore an existing JSON backup.
-2. Complete the seven editor steps, covering all eight numbered report sections.
-3. Review the required fields and export Word or PDF. Draft export is available while fields are incomplete.
-4. Download a JSON backup to preserve the editable report and its photographs.
+1. Create a report or select Edit beside a saved report.
+2. Fill the continuous form, from report details through review and export.
+3. Check required details and download Word or PDF. Draft export is available at any time.
 
-The editor uses 18 px input text, clear field labels, and 48–54 px main controls. Repeatable entries appear as numbered cards with their own labels, full-width descriptions and plus buttons. The report library offers selected-field search, accreditation, stage, status and inspection-date filters with a single reset action. Each report has Edit, Word and PDF actions; duplication and deletion are under More. The compact desktop sidebar keeps all seven section names visible and clickable, while smaller screens use a navigation drawer. Template buttons and the progress bar have been removed.
+The editor uses 18 px input text, clear labels and large controls. Repeatable entries appear as numbered cards with their own labels, descriptions and plus buttons. The report library has selected-field search, accreditation, stage, status and inspection-date filters arranged in two rows on desktop. Smaller layouts wrap the controls for readability. Each report has Edit, Word and PDF actions; duplication and deletion are under More.
 
-Use **Complete step & continue** to review each step. Reviewed sections receive a check in the sidebar. Editing a reviewed section invalidates that step and the final review. Optional photographs can be omitted while still completing their review step. **View all sections** shows the whole report in document order; its footer can confirm all displayed sections after validation. Form search looks through field names, guidance, and entered values, including table cells and photograph descriptions, and focuses the selected field.
+Opening a report automatically collapses the workspace sidebar. Its panel slides away while all seven section links remain on the page background. The icon-only sidebar control expands or collapses it, with a hover hint and **Ctrl+B** shortcut that also works while typing. On phones, a sticky strip of seven section buttons supplements the navigation drawer.
+
+All seven sections stay mounted on a single scrollable page. Section links scroll to their headings, and the highlighted link follows normal scrolling. There are no page switches, progress bars or section-completion buttons. The review checks required fields directly before the report can be marked ready. Form search finds field names, guidance and entered values across every section and focuses the matching field.
 
 Every report date can be typed (DD.MM.YYYY, DD/MM/YYYY, or ISO) or chosen through its keyboard-accessible calendar button. Invalid calendar dates are rejected by review validation and identified beside the input.
 
@@ -46,7 +47,7 @@ The direct PDF export recreates the AES layout with embedded Noto Sans fonts, re
 
 All reports and uploaded images are stored in **IndexedDB in the current browser**, under this site's origin. This version has no shared database, staff accounts, device synchronization, external report approval, or email delivery. The hosted Site is owner-private. Site access is separate from report storage.
 
-Reports do not move automatically between the local development URL and the hosted URL. Use **Backup** and **Restore** to transfer them. Clearing browser data removes saved reports. Storage failures are surfaced with a backup action. Imported reports receive new IDs and are returned to draft for review.
+Reports remain in their existing browser storage. Backup and Restore controls and their JSON import/export functionality have been removed. Existing reports and photographs are retained. Clearing browser data removes saved reports. Storage failures offer Retry save, and a failed save keeps the editor open. Word and PDF downloads remain available.
 
 “Ready” means the required-field checks passed and the user marked the report ready; it is not a third-party approval.
 
@@ -64,22 +65,22 @@ $env:AES_TEST_URL='http://127.0.0.1:5173'
 node tests/browser.mjs
 ```
 
-The integration script checks typed and calendar dates, invalid dates, live uppercase formatting, name/value search across all steps, completion and invalidation, save failure protection, removal confirmations, linked text, tables, photographs, original section 5.0 Word XML preservation, downloads, PDF preview, draft persistence, backup/restore, and mobile overflow. It also generates a stress PDF with long activities, findings, captions and inspector names. Verification files are written to the ignored `test-results/` directory. See [VERIFICATION.md](VERIFICATION.md) for the report audit and [STANDARDS.md](STANDARDS.md) for the W3C references, accessibility results, responsive matrix and Chrome/Firefox test commands.
+The integration script checks typed and calendar dates, invalid dates, live uppercase formatting, field search and focus, continuous scrolling and active-section tracking, Ctrl+B, compact filters, row/photo confirmations, storage failure protection, persistence, Word/PDF downloads and original section 5.0 XML preservation. The UX suite checks compound report filters, input sizing and mobile layout. Verification files are written to the ignored `test-results/` directory. See [VERIFICATION.md](VERIFICATION.md) and [STANDARDS.md](STANDARDS.md) for the scope and browser commands.
 
 ## Source layout
 
-- `src/model.js`: field schema, linked values, validation, reference example, backup import validation.
+- `src/model.js`: field schema, linked values, validation, reference example and validation.
 - `src/form-controls.jsx`: accessible typed/calendar dates, multiline live bold rendering, and report-detail rows.
 - `src/accessibility.css`: contrast, focus, control boundaries, reflow and reduced-height adjustments.
 - `src/workspace.css`: daily-use typography, compact section navigation, filters and labelled entry cards.
 - `src/focus.js`: dialog/drawer keyboard containment, focus restoration and shared scroll locking.
 - `src/standard-activity.json`: section 5.0 paragraphs extracted from the original Word document.
 - `src/main.jsx`: report library, form editor, review and export interactions.
-- `src/storage.js`: browser persistence, image preparation, downloads and backups.
+- `src/storage.js`: browser persistence, image preparation, Word/PDF file downloads.
 - `src/word.js`: fills the original Word template using namespace-aware XML.
 - `src/pdf.js`: direct PDF generation.
 - `public/report-template.docx`: cleaned original-format template.
-- `public/example/`: source reference content for the optional example.
+- `public/example/`: reference assets used for export verification.
 - `public/fonts/`: Noto Sans fonts and open font license for PDF embedding.
 
 All template, example, branding and font assets required to run or build the portal are included. Original source documents and generated reports are not required to build the application. The originals in the development workspace were left unchanged.

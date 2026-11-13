@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {newReport,narrative,generalRows,location,displayDate,issues,validateImport,parseDateToIso,progress,stepDone,hydrateReport,searchReportFields,defaultActivityDetails,activityDetailsText,filterReports} from '../src/model.js';
+import {newReport,narrative,generalRows,location,displayDate,issues,parseDateToIso,progress,stepDone,hydrateReport,searchReportFields,defaultActivityDetails,activityDetailsText,filterReports} from '../src/model.js';
 
 test('each repeatable data table starts with one row while metadata stays fixed',()=>{
  const r=newReport();for(const key of ['equipment','documents','activities','calibration','expenses','persons'])assert.equal(r[key].length,1,key);assert.equal(r.photos.length,0);assert.equal(generalRows(r).length,10);
@@ -14,11 +14,6 @@ test('opening paragraph follows its source fields and stops at state',()=>{
 test('review catches missing captions and invalid calibration date order',()=>{
  const r=newReport();r.photos=[{caption:''}];r.calibration[0].date='2026-12-01';r.calibration[0].due='2026-01-01';assert.ok(issues(r).some(x=>x.section===4));assert.ok(issues(r).some(x=>x.message.includes('due date precedes')));assert.equal(displayDate('2026-11-07'),'07.11.2026');
 });
-test('backup import creates distinct draft IDs, preserves values, rejects unsafe images',()=>{
- const r=newReport();r.client='Keep me';r.status='ready';const a=validateImport({format:'aes-report-backup-v1',reports:[r]})[0];assert.equal(a.client,'Keep me');assert.equal(a.status,'draft');assert.notEqual(a.id,r.id);
- assert.throws(()=>validateImport({format:'aes-report-backup-v1',reports:[{...r,inspectorSignature:'https://external/image.jpg'}]}));assert.throws(()=>validateImport({reports:[r]}));
-});
-
 test('typed and calendar dates normalize only when the real calendar date exists',()=>{
  assert.equal(parseDateToIso('7.11.2026'),'2026-11-07');assert.equal(parseDateToIso('07/11/2026'),'2026-11-07');assert.equal(parseDateToIso('2026-11-07'),'2026-11-07');
  for(const value of ['31.02.2026','2026-02-29','31.04.2026','2026-13-01','11.11.26','00.01.2026'])assert.equal(parseDateToIso(value),'',value);

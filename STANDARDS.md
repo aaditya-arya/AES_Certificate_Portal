@@ -1,6 +1,6 @@
 # Web standards and browser verification
 
-Verified on 12 November 2026 before the GitHub push. The interface remains a browser-local report application; these checks do not add staff accounts or a shared database.
+Verified on 13 November 2026 before the GitHub push. The interface remains a browser-local report application; these checks do not add staff accounts or a shared database.
 
 ## Reference requirements
 
@@ -15,7 +15,7 @@ The review uses the W3C's WCAG 2.2 guidance for:
 ## Corrections from this review
 
 - Darkened low-contrast helper text, table headings, placeholders, and status text while preserving AES branding.
-- Aligned the Menu button's accessible name with its visible text.
+- Replaced Menu text with an icon-only sidebar control, an accessible action name and a Ctrl+B hover hint.
 - Added a skip-to-content link, strong focus indicators, and space for focused controls below sticky toolbars. Toolbars stop sticking on short viewports.
 - Corrected the validation heading hierarchy and a named report preview's landmark role.
 - Moved dialogs into a body portal. Dialogs trap keyboard focus, make their background inert, close with Escape, and restore focus when dismissed.
@@ -26,23 +26,26 @@ The review uses the W3C's WCAG 2.2 guidance for:
 - Removed the progress bar and template controls; kept section names visible and interactive in the compact sidebar.
 - Added selected-field report search and compound accreditation, stage, status and inspection-date filters, with reset and explicit Edit actions.
 - Fixed the menu icon and destructive-action text contrast.
-- Kept all-sections completion available from the review step, and revalidated legacy Ready records without discarding their field values.
+- Converted the editor to one continuous page with scroll-linked section anchors and no section-completion gates.
+- Added icon-only sidebar controls, the Ctrl+B shortcut, slide transitions and automatic collapse when opening a report.
+- Added a sticky mobile section strip, and removed backup/restore functionality while retaining saved records.
+- Reduced the desktop filters to two rows and prevented layout animation from causing overflow during a resize to mobile.
 
 ## Automated results
 
 | Check | Chrome | Firefox |
 |---|---|---|
 | Complete report workflow | Pass | Pass |
-| Accessibility scans | 18 states, zero axe violations | 18 states, zero axe violations |
+| Accessibility scans | 13 states, zero axe violations | 13 states, zero axe violations |
 | Responsive cases | 90 cases pass | 90 cases pass |
 | Keyboard navigation, focus containment and restoration | Pass | Pass |
 | Compact navigation, entry cards and report filter workflow | Pass | Pass |
 
-Widths tested: **320, 375, 390, 640, 768, 820, 1024, 1440, and 1920 CSS pixels**. The layout matrix covers the empty and populated report library, all seven report steps, and error states. The scans cover storage-help dialogs, nested mobile dialogs, navigation, review, and required-field errors as well as the normal form.
+Widths tested: **320, 375, 390, 640, 768, 820, 1024, 1440, and 1920 CSS pixels**. The layout matrix covers the empty and populated report library, all seven scroll destinations in the continuous form, and error states. The scans cover storage-help dialogs, nested mobile dialogs, navigation, review, and required-field errors as well as the normal form.
 
-The workflow test covers typed/calendar dates, invalid date rejection, uppercase live formatting, all-field search and focus, step completion and invalidation, row/photo removal confirmations, failed-save protection, Word/PDF downloads, PDF preview, persistence, backups and restoration, all-sections completion when opened from review, and long PDF content. The default section 5.0 Word XML remains unchanged from the template.
+The workflow test covers typed/calendar dates, invalid date rejection, uppercase live formatting, all-field search and focus, continuous scrolling and active-section tracking, row/photo removal confirmations, failed-save protection, Word/PDF downloads, PDF preview, persistence, absence of backup/restore controls, and marking ready without section-completion gates. The default section 5.0 Word XML remains unchanged from the template.
 
-Additional release checks: ten model tests, production build, dependency audit, production preview/export smoke check, and Git whitespace checks. Generated reports and browser backups stay in the ignored `test-results/` directory and are not part of the source push.
+Additional release checks: nine model tests, production build, dependency audit, production preview/export smoke check, and Git whitespace checks. Generated reports and browser test artifacts stay in the ignored `test-results/` directory and are not part of the source push.
 
 Automated checks and the documented keyboard flows are the scope of this verification, not a formal WCAG certification or exhaustive assistive-technology audit. The browser's built-in PDF viewer and exported PDFs are not covered by the web UI's axe result. See [VERIFICATION.md](VERIFICATION.md) for export fidelity and storage limits.
 

@@ -14,16 +14,43 @@ import {
   locationOrganization, requester, displayDate, endDateDisplay, accreditationType,
   parseDateToIso, isCapsText, defaultActivityDetails, defaultConclusion,
   defaultPending, defaultIdentification, defaultNonconformities, defaultEnclosures,
-  po, issues, stepDone, validateImport, calibrationRemark, uid, filterReports,
+  po, issues, calibrationRemark, uid, filterReports,
   hydrateReport, searchReportFields, sectionForField, activityDetailsText, fieldCatalog, searchableFields
 } from './model';
-import {readReports, saveReports, backup, download, imageFile} from './storage';
+import {readReports, saveReports, download, imageFile} from './storage';
 import {DateInput, ReportTextarea, ReportDetailRow} from './form-controls';
 import './styles.css';
 import './accessibility.css';
 import './workspace.css';
 
 const icons = [FileText, Settings2, ClipboardCheck, FileCheck2, Images, Users, Eye];
+
+const sectionGuidance=[
+  'Enter the report header, client, inspection location and visit details.',
+  'Describe the inspected equipment and add the reference documents used.',
+  'Record the QAP activities. The original section 5.0 text is included below.',
+  'Add instrument calibration details and record your inspection findings.',
+  'Add photographs and a description for each image. This section is optional.',
+  'Record visit expenses and the inspector and reviewer sign-off.',
+  'Check the required details, preview your report and download Word or PDF.'
+];
+
+function ReportSection({index,children}) {
+  return <section id={`report-section-${index}`} data-report-section={index} className="report-form-section" aria-label={sections[index]}>
+    <div className="section-intro">
+      <span className="step-label">SECTION {String(index+1).padStart(2,'0')}</span>
+      <h2 id={`report-section-heading-${index}`} tabIndex={-1}>{sections[index]}</h2>
+      <p>{sectionGuidance[index]}</p>
+    </div>
+    {children}
+  </section>;
+}
+
+function stickyOffset(){
+  return [...document.querySelectorAll('.topbar,.report-command-bar,.mobile-section-nav')]
+    .filter(element=>getComputedStyle(element).position==='sticky')
+    .reduce((total,element)=>total+element.getBoundingClientRect().height,0)+24;
+}
 
 
 
@@ -105,7 +132,7 @@ function Card({title, subtitle, number, action, children, className = ''}) {
       <div className="card-heading">
         <div className="card-title">
           <div>
-            <h2>{title}</h2>
+          <h3>{title}</h3>
             {subtitle && <p>{subtitle}</p>}
           </div>
         </div>
@@ -266,10 +293,8 @@ function App() {
   const [loaded, setLoaded] = useState(false);
   const [activeId, setActiveId] = useState(null);
   const [step, setStep] = useState(0);
-  const [showAllSteps, setShowAllSteps] = useState(false);
   const [formSearch, setFormSearch] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(()=>{try{return localStorage.getItem('aes-sidebar-collapsed')==='true';}catch{return false;}});
-  const [sectionWarnings,setSectionWarnings] = useState([]);
   const [dirty, setDirty] = useState(false);
   const snapshotRef = useRef(null);
 
@@ -288,7 +313,8 @@ function App() {
   const [mobile, setMobile] = useState(false);
   const [smallScreen,setSmallScreen]=useState(()=>matchMedia('(max-width:820px)').matches);
   const sidebarRef=useRef(null),mobileMenuRef=useRef(null);
-  const sidebarHidden=smallScreen&&!mobile;
+  const sidebarHidden=smallScreen?!mobile:sidebarCollapsed&&!activeId;
+  useEffect(()=>{if(sidebarHidden&&sidebarRef.current?.contains(document.activeElement))mobileMenuRef.current?.focus();},[sidebarHidden]);
   useEffect(()=>{const query=matchMedia('(max-width:820px)');const change=()=>{setSmallScreen(query.matches);if(!query.matches)setMobile(false);};query.addEventListener('change',change);return()=>query.removeEventListener('change',change);},[]);
   useEffect(()=>{
     if(!mobile||!smallScreen)return;
@@ -301,7 +327,17 @@ function App() {
   const [modal, setModal] = useState(null);
   const [pdfUrl, setPdfUrl] = useState('');
 
-  const importRef = useRef();
+  useEffect(()=>{
+    const toggle=event=>{
+      if(!event.ctrlKey||event.altKey||event.metaKey||event.key.toLowerCase()!=='b'||modal)return;
+      event.preventDefault();
+      if(event.repeat)return;
+      if(smallScreen)setMobile(value=>!value);else setSidebarCollapsed(value=>!value);
+    };
+    window.addEventListener('keydown',toggle);
+    return()=>window.removeEventListener('keydown',toggle);
+  },[smallScreen,modal]);
+
   const fileRef = useRef();
   const saveTimer = useRef();
   const latest = useRef(reports);
@@ -321,7 +357,7 @@ function App() {
     saveTimer.current = setTimeout(() => {
       saveReports(reports)
         .then(() => { if (latest.current === reports) { setSaveState('saved'); setError(''); } })
-        .catch(() => { setSaveState('error'); setError('This report could not be saved. Download a backup now to preserve your work, then free browser storage.'); });
+        .catch(() => { setSaveState('error'); setError('This report could not be saved. Keep it open, free browser storage and retry saving.'); });
     }, 500);
     return () => clearTimeout(saveTimer.current);
   }, [reports, loaded]);
@@ -342,6 +378,26 @@ function App() {
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
 
   const r = reports.find(x => x.id === activeId);
+  useEffect(()=>{
+    if(!activeId)return;
+    let frame=0;
+    const updateSection=()=>{
+      frame=0;
+      const offset=stickyOffset();
+      document.documentElement.style.setProperty('--section-offset',`${offset}px`);
+      let active=0;
+      for(const element of document.querySelectorAll('[data-report-section]')){
+        if(element.getBoundingClientRect().top<=offset+70)active=Number(element.dataset.reportSection);
+      }
+      setStep(active);
+    };
+    const schedule=()=>{if(!frame)frame=requestAnimationFrame(updateSection);};
+    const observer=new ResizeObserver(schedule);
+    const column=document.querySelector('.form-column');if(column)observer.observe(column);
+    window.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule);
+    schedule();
+    return()=>{window.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);observer.disconnect();cancelAnimationFrame(frame);};
+  },[activeId]);
   const alert = message => {
     setToast(message);
     clearTimeout(toastTimer.current);
@@ -349,36 +405,37 @@ function App() {
   };
 
   const update = (key, value) => {
-    setDirty(true); setSaveState('saving'); setSectionWarnings([]);
+    setDirty(true); setSaveState('saving');
     const section=sectionForField(key);
     setReports(prev=>prev.map(x=>x.id===activeId?{...x,[key]:value,status:'draft',completedSteps:(x.completedSteps||[]).filter(i=>i!==section&&i!==6),updatedAt:new Date().toISOString()}:x));
   };
   const field=(key,label,props={})=><Field key={key} path={key} label={label} value={r[key]} onChange={v=>update(key,v)} {...props}/>;
-  const navigate=n=>{setStep(n);setSectionWarnings([]);setMobile(false);window.scrollTo({top:0,behavior:'smooth'});};
+  const navigate=n=>{
+    setMobile(false);
+    requestAnimationFrame(()=>{
+      const heading=document.getElementById(`report-section-heading-${n}`);
+      heading?.focus({preventScroll:true});
+      heading?.closest('[data-report-section]')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});
+    });
+  };
   const goToField=result=>{
-    setShowAllSteps(false);setFormSearch('');navigate(result.section);
+    setFormSearch('');setMobile(false);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       const path=result.path==='requester'&&r.requesterIsClient?'client':result.path==='locationOrganization'&&r.locationIsManufacturer?'manufacturer':result.path;
       const box=document.querySelector(`[data-field-path="${CSS.escape(path)}"]`);
       if(box){box.scrollIntoView({behavior:'smooth',block:'center'});(box.querySelector('input:not([type=hidden]),textarea,select,button')||box).focus({preventScroll:true});box.classList.add('field-found');setTimeout(()=>box.classList.remove('field-found'),2500);}
     }));
   };
-  const completeCurrentStep=()=>{
-    const found=issues(r).filter(x=>showAllSteps?x.section<6:x.section===step);
-    if(found.length){setSectionWarnings(found);setTimeout(()=>document.querySelector('.section-validation')?.scrollIntoView({behavior:'smooth',block:'center'}),30);return;}
-    const completed=showAllSteps?[0,1,2,3,4,5]:[step];
-    setReports(prev=>prev.map(x=>x.id===activeId?{...x,completedSteps:[...new Set([...(x.completedSteps||[]),...completed])],updatedAt:new Date().toISOString()}:x));
-    setDirty(true);setShowAllSteps(false);setFormSearch('');navigate(showAllSteps?6:Math.min(step+1,6));
-  };
-
   const open = report => {
     snapshotRef.current = structuredClone(report);
     setDirty(false);
-    setSectionWarnings([]);
+
     setFormSearch('');
-    setShowAllSteps(false);
     setActiveId(report.id);
-    navigate(0);
+    setStep(0);
+    setSidebarCollapsed(true);
+    setMobile(false);
+    window.scrollTo({top:0,behavior:"instant"});
   };
 
   const requestLeave = (onConfirmLeave) => {
@@ -420,7 +477,7 @@ function App() {
       return true;
     } catch {
       setSaveState('error');
-      setError('Could not save. Download a backup to preserve your reports.');
+      setError('Could not save. Keep this report open and retry after freeing browser storage.');
       return false;
     }
   };
@@ -445,20 +502,6 @@ function App() {
     }
     setModal(null);
     alert('Report deleted from this browser.');
-  };
-
-  const restore = async e => {
-    const file = e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
-    try {
-      if (file.size > 100 * 1024 * 1024) throw Error('Backup exceeds the 100 MB limit.');
-      const incoming = validateImport(JSON.parse(await file.text()));
-      setReports(prev => [...incoming, ...prev]);
-      alert(`${incoming.length} report${incoming.length === 1 ? '' : 's'} restored as new drafts.`);
-    } catch (err) {
-      alert(err.message || 'Could not restore the backup.');
-    }
   };
 
   const exportReport = async (type, draft = false, targetReport = r) => {
@@ -526,10 +569,9 @@ function App() {
   const resetFilters=()=>{setSearch('');setSearchBy('all');setStageFilter('');setFilter('all');setAccreditationFilter('');setDateFrom('');setDateTo('');};
   const activeSearchQuery = formSearch.trim();
   const searchResults = r && activeSearchQuery ? searchReportFields(r,activeSearchQuery) : [];
-  const isStepVisible=idx=>showAllSteps||step===idx;
 
   return (
-    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}><a className="skip-link" href="#main-content">Skip to report content</a>
+    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${r ? 'editor-open' : ''}`}><a className="skip-link" href="#main-content">Skip to report content</a>
       <div ref={sidebarRef} id="report-sidebar" inert={sidebarHidden?true:undefined} aria-hidden={sidebarHidden?true:undefined} role={mobile&&smallScreen?'dialog':'complementary'} aria-modal={mobile&&smallScreen?true:undefined} aria-label={mobile&&smallScreen?'Report navigation':'Report sidebar'} className={`sidebar ${mobile ? 'mobile-open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-top-row">
           <a className="brand" href="#" onClick={e => { e.preventDefault(); closeEditor(); }}>
@@ -559,19 +601,17 @@ function App() {
             </div>
             <nav className="steps" aria-label="Report sections">
               {sections.map((title, i) => {
-                const done = stepDone(r, i);
                 return (
                   <button
                     key={title}
-                    aria-current={step===i&&!showAllSteps?'step':undefined} className={`step ${step === i && !showAllSteps ? 'active' : ''} ${done ? 'done' : ''}`}
-                    onClick={() => { setShowAllSteps(false); setFormSearch(''); navigate(i); }}
+                    aria-current={step===i?'location':undefined} className={`step ${step === i ? 'active' : ''}`} aria-controls={`report-section-${i}`}
+                    onClick={() => { setFormSearch(''); navigate(i); }}
                   >
                     <span className="step-circle">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span>{title}</span>
-                    {done && <Check className="section-reviewed" size={16} aria-label="Reviewed"/>}
-                    {step === i && !done && <ChevronRight size={15} />}
+                    {step === i && <ChevronRight size={15} />}
                   </button>
                 );
               })}
@@ -582,7 +622,7 @@ function App() {
         <div className="sidebar-bottom">
           <div className="local-indicator">
             <HardDrive size={17} />
-            <div>Saved on this device<small>Back up reports to keep a copy.</small></div>
+            <div>Saved on this device<small>Changes save automatically.</small></div>
           </div>
           <button className="nav-item help-link" onClick={() => setModal({type: 'help'})}>
             <AlertCircle size={17} />
@@ -597,23 +637,19 @@ function App() {
       <div className="main-shell" inert={mobile&&smallScreen?true:undefined}>
         <header className="topbar">
           <div className="breadcrumbs">
-            <button
-              type="button"
-              className="sidebar-toggle-button"
-              aria-label={sidebarCollapsed ? 'Menu: expand sidebar' : 'Menu: collapse sidebar'}
-              title={sidebarCollapsed ? 'Expand workspace sidebar' : 'Keep section navigation only'}
-              aria-expanded={!sidebarCollapsed} aria-controls="report-sidebar"
-              onClick={() => {
-                if (window.innerWidth <= 820) setMobile(true);
-                else setSidebarCollapsed(v => !v);
-              }}
-            >
-              <SidebarToggleSvg collapsed={sidebarCollapsed} />
-              <span>Menu</span>
-            </button>
-            <button ref={mobileMenuRef} className="mobile-menu icon-button" aria-label="Open navigation" aria-controls="report-sidebar" aria-expanded={mobile} onClick={() => setMobile(true)}>
-              <Menu size={20} />
-            </button>
+            <span className="sidebar-toggle-wrap">
+              <button ref={mobileMenuRef} type="button" className="sidebar-toggle-button"
+                aria-label={smallScreen?(mobile?'Close sidebar':'Open sidebar'):(sidebarCollapsed?'Expand sidebar':'Collapse sidebar')}
+                aria-keyshortcuts="Control+b" aria-describedby="sidebar-shortcut-hint"
+                aria-expanded={smallScreen?mobile:!sidebarCollapsed} aria-controls="report-sidebar"
+                onClick={()=>smallScreen?setMobile(v=>!v):setSidebarCollapsed(v=>!v)}>
+                <SidebarToggleSvg collapsed={smallScreen?!mobile:sidebarCollapsed}/>
+              </button>
+              <span role="tooltip" id="sidebar-shortcut-hint" className="sidebar-tooltip">
+                {smallScreen?(mobile?'Close sidebar':'Open sidebar'):(sidebarCollapsed?'Expand sidebar':'Collapse sidebar')}
+                <span><kbd>Ctrl</kbd><span>+</span><kbd>B</kbd></span>
+              </span>
+            </span>
             <button onClick={closeEditor}>Inspection reports</button>
             {r && (
               <>
@@ -631,12 +667,16 @@ function App() {
           </div>
         </header>
 
+        {r&&<nav className="mobile-section-nav" aria-label="Quick report sections">
+          {sections.map((title,index)=><button type="button" key={title} aria-label={`${String(index+1).padStart(2,'0')} ${title}`} title={title} aria-current={step===index?'location':undefined} aria-controls={`report-section-${index}`} onClick={()=>navigate(index)}>{String(index+1).padStart(2,'0')}</button>)}
+        </nav>}
+
         <main id="main-content" tabIndex={-1} className={r ? 'editor-page' : 'library-page'}>
           {error && (
             <div className="error-banner" role="alert">
               <AlertCircle size={18} />
               <span>{error}</span>
-              <button onClick={() => backup(reports)}>Download backup</button>
+              {loaded&&<button onClick={manualSave}>Retry save</button>}
             </div>
           )}
 
@@ -651,8 +691,6 @@ function App() {
                   <p>Create, edit and download inspection reports.</p>
                 </div>
                 <div className="report-tools">
-                  <Button icon={Upload} onClick={() => importRef.current.click()}>Restore</Button>
-                  <Button icon={Download} disabled={!reports.length} onClick={() => backup(reports)}>Backup</Button>
                   <Button className="primary" icon={Plus} onClick={add}>Create report</Button>
                 </div>
               </div>
@@ -730,7 +768,7 @@ function App() {
                   <Button icon={saveState === 'saving' ? Loader2 : Check} className="primary" onClick={manualSave}>Save draft</Button>
                 </div>
 
-              {/* Form Search & View All Fields Bar */}
+              {/* Search every section of the continuous form. */}
               <div className="form-utility-bar">
                 <div className="form-search-box">
                   <Search size={17} />
@@ -747,49 +785,16 @@ function App() {
                     </button>
                   )}
                 </div>
-                <div className="form-utility-actions">
-                  <button
-                    type="button"
-                    className={`button ${showAllSteps ? 'primary' : ''}`}
-                    onClick={() => {
-                      setFormSearch('');
-                      setShowAllSteps(v => !v);
-                    }}
-                  >
-                    <SlidersHorizontal size={16} />
-                    <span>{showAllSteps ? 'Step-by-step view' : 'View all sections'}</span>
-                  </button>
-                </div>
+
               </div>
 
               {activeSearchQuery&&<section className="field-search-results" aria-label="Field search results">
-                <div className="search-result-heading"><h2>{searchResults.length} matching {searchResults.length===1?'field':'fields'}</h2><span>Searches field names, guidance and entered values across all seven steps.</span></div>
+                <div className="search-result-heading"><h2>{searchResults.length} matching {searchResults.length===1?'field':'fields'}</h2><span>Searches field names, guidance and entered values across all seven sections.</span></div>
                 {searchResults.length?<div className="search-result-list">{searchResults.slice(0,60).map(result=><button key={result.path} onClick={()=>goToField(result)}><span className="search-step">{result.section+1}</span><span><strong>{result.label}</strong><small>{result.value&& !result.path.endsWith('Signature') ? result.value.slice(0,160):result.help}</small></span><ArrowRight size={17}/></button>)}</div>:<p className="no-field-results">No fields match “{formSearch}”. Try a field name, a report section number, or text you entered.</p>}
               </section>}
-              {sectionWarnings.length>0&&<div className="section-validation" role="alert"><h2>Complete these details before continuing</h2><ul>{sectionWarnings.map((x,i)=><li key={i}>{x.message}</li>)}</ul><p>You can also choose another step and return later.</p></div>}
               <div className="editor-layout">
                 <div className="form-column">
-                  {!showAllSteps && (
-                    <div className="section-intro">
-                      <span className="step-label">
-                        STEP {String(step + 1).padStart(2, '0')} OF 07 · {stepDone(r, step) ? 'COMPLETED ✓' : 'IN PROGRESS'}
-                      </span>
-                      <h2>{sections[step]}</h2>
-                      <p>
-                        {[
-                          'Enter the report header, inspection details and inspection stage in the order they appear in the report.',
-                          'Describe the equipment, quantities and reference documents used for this inspection.',
-                          'Record the QAP activities and review the original section 5.0 text.',
-                          'Enter instrument calibration details, followed by the inspection findings.',
-                          'Upload photographs and describe what each image shows. Photographs are optional.',
-                          'Record the visit expenses, then the inspector and reviewer sign-off.',
-                          'Review every section and download the report in Word or PDF.'
-                        ][step]}
-                      </p>
-                    </div>
-                  )}
-
-                  {isStepVisible(0)&&<>
+                  <ReportSection index={0}>
                     <Card title="Report header" subtitle="These details appear alongside the AES logo on every page.">
                       <div className="form-grid report-meta">
                         {field('reportNo','Inspection visit report no.',{required:true,wide:true,placeholder:'e.g. AESPL/IACL/BEPL/IR/AS/2611/0701'})}
@@ -845,10 +850,9 @@ function App() {
                     <Card title="1.0 Stage of inspection" subtitle="Select every stage covered by this visit." number="1.0">
                       <div data-field-path="stages" className="stage-grid">{stages.map(stage=><label className={`stage-option ${r.stages.includes(stage)?'checked':''}`} key={stage}><input type="checkbox" checked={r.stages.includes(stage)} onChange={()=>update('stages',r.stages.includes(stage)?r.stages.filter(x=>x!==stage):[...r.stages,stage])}/><span className="custom-check">{r.stages.includes(stage)&&<Check size={14}/>}</span><span>{stage}</span></label>)}</div>
                     </Card>
-                  </>}
+                  </ReportSection>
 
-                  {isStepVisible(1) && (
-                    <>
+                  <ReportSection index={1}>
                       <Card
                         title="2.0 Name of Equipment / Inspected Item:"
                         subtitle="Use the PO item number, equipment description and three quantities. Include units, for example 02 Nos."
@@ -888,11 +892,9 @@ function App() {
                         <Plus size={18} />
                         <p>All dates in Table 3.0 can be either typed/edited directly (e.g. 28.05.2026) or selected from the calendar icon.</p>
                       </div>
-                    </>
-                  )}
+                    </ReportSection>
 
-                  {isStepVisible(2) && (
-                    <>
+                  <ReportSection index={2}>
                       <Card
                         title="4.0 Inspection Activities as per ITP/QAP/MQP:"
                         subtitle="Enter the QAP group and subgroup, then list each activity, its clause, check coverage and inspection scope."
@@ -928,11 +930,9 @@ function App() {
                         </div>
                         {r.activityDetailsMode==='custom'?<><p className="custom-activity-note">This report has custom activity text. Restore the original text to use section 5.0 exactly as supplied in FINAL_DOC.docx.</p>{field('activityDetails','Activity details',{ariaLabel:'Activity details',type:'textarea',required:true,rows:15})}</>:<FormattedActivityPreview text={activityDetailsText(r)}/>}
                       </Card>
-                    </>
-                  )}
+                    </ReportSection>
 
-                  {isStepVisible(3) && (
-                    <>
+                  <ReportSection index={3}>
                       <Card
                         title="6.0 Calibration Details:"
                         subtitle="Identify each instrument and enter its calibration and due dates."
@@ -1003,11 +1003,9 @@ function App() {
                           })}
                         </div>
                       </Card>
-                    </>
-                  )}
+                    </ReportSection>
 
-                  {isStepVisible(4) && (
-                    <>
+                  <ReportSection index={4}>
                       <Card
                         title="7.0 Inspection Photographs:"
                         subtitle="Optional. Add photographs in report order, with a description below each image."
@@ -1048,7 +1046,7 @@ function App() {
                           {r.photos.map((p, i) => (
                             <div className="photo-card" key={p.id}>
                               <div className="photo-image">
-                                <img src={p.data} alt={p.caption || `Inspection photograph ${i + 1}`} />
+                                <img src={p.data} alt={p.caption || `Inspection photograph ${i + 1}`} loading="lazy" decoding="async" />
                                 <span className="photo-number">Photo {String(i + 1).padStart(2, '0')}</span>
                               </div>
                               <div className="photo-body">
@@ -1105,11 +1103,9 @@ function App() {
                           ))}
                         </div>
                       )}
-                    </>
-                  )}
+                    </ReportSection>
 
-                  {isStepVisible(5) && (
-                    <>
+                  <ReportSection index={5}>
                       <Card
                         title="8.0 Expenditure Report:"
                         subtitle="Enter one row per visit. Include the visit date, time on site, travel time and round-trip distance."
@@ -1174,11 +1170,9 @@ function App() {
                           ))}
                         </div>
                       </Card>
-                    </>
-                  )}
+                    </ReportSection>
 
-                  {isStepVisible(6) && (
-                    <>
+                  <ReportSection index={6}>
                       <div className={`review-banner ${reportIssues.length ? 'incomplete' : 'complete'}`}>
                         <span>{reportIssues.length ? <ClipboardCheck size={28} /> : <CheckCircle2 size={28} />}</span>
                         <div>
@@ -1187,16 +1181,15 @@ function App() {
                         </div>
                       </div>
 
-                      {(r.completedSteps||[]).filter(i=>i<6).length<6&&<div className="review-steps-note"><h3>Review the remaining steps</h3><p>Use “Complete step & continue” after checking each section. Optional sections can be completed without adding rows or photographs.</p><div>{sections.slice(0,6).map((title,i)=>!stepDone(r,i)&&<Button key={i} onClick={()=>navigate(i)}>Step {i+1}: {title}</Button>)}</div></div>}
                       {!!reportIssues.length && (
-  
+
                       <Card title="Complete your report">
                           <ul className="issues-list">
                             {reportIssues.map((x, i) => (
                               <li key={i}>
                                 <AlertCircle size={16} />
                                 <span>{x.message}</span>
-                                <button onClick={() => { setShowAllSteps(false); setFormSearch(''); navigate(x.section); }}>Edit <ArrowRight size={14} /></button>
+                                <button onClick={() => { setFormSearch(''); navigate(x.section); }}>Edit <ArrowRight size={14} /></button>
                               </li>
                             ))}
                           </ul>
@@ -1262,7 +1255,7 @@ function App() {
                           <AlertCircle size={16} />
                           <p>Word controls the final pagination of the original template. For an exact Word-to-PDF conversion, open the .docx in Microsoft Word and choose Save as PDF.</p>
                         </div>
-                        {!reportIssues.length && sections.slice(0,6).every((_,i)=>stepDone(r,i)) && (
+                        {!reportIssues.length && (
                           <Button
                             className={r.status === 'ready' ? 'ready-button' : 'primary'}
                             icon={CheckCircle2}
@@ -1276,29 +1269,9 @@ function App() {
                           </Button>
                         )}
                       </Card>
-                    </>
-                  )}
+                    </ReportSection>
 
-                  <div className="step-footer">
-                    <Button icon={ArrowLeft} onClick={() => step === 0 ? closeEditor() : navigate(step - 1)}>
-                      {step === 0 ? 'Back to reports' : 'Previous section'}
-                    </Button>
-                    <div className="footer-download-group">
-                      <Button icon={Download} disabled={!!busy} onClick={() => exportReport('word', issues(r).length > 0)}>
-                        Word (.docx)
-                      </Button>
-                      <Button icon={Download} disabled={!!busy} onClick={() => exportReport('pdf', issues(r).length > 0)}>
-                        PDF (.pdf)
-                      </Button>
-                    </div>
-                    {step < 6 || showAllSteps ? (
-                      <Button className="primary next-button" onClick={completeCurrentStep}>
-                        {showAllSteps?'Confirm all sections & continue':'Complete step & continue'} <ArrowRight size={16} />
-                      </Button>
-                    ) : (
-                      <Button icon={LayoutDashboard} onClick={closeEditor}>Back to reports</Button>
-                    )}
-                  </div>
+                  <div className="form-end-actions"><Button icon={ArrowLeft} onClick={closeEditor}>Back to reports</Button><Button className="primary" icon={Check} onClick={manualSave}>Save report</Button></div>
                 </div>
 
 
@@ -1310,7 +1283,7 @@ function App() {
 
       </div>
 
-      <input hidden ref={importRef} type="file" accept="application/json,.json" onChange={restore} />
+
 
       {toast && (
         <div className="toast" role="status">
@@ -1355,7 +1328,7 @@ function App() {
 
       {modal?.type === 'delete' && (
         <Modal title="Delete this report?" onClose={() => setModal(null)}>
-          <p className="modal-copy">This removes the report and its photographs from this browser. Download a backup first if you need a copy.</p>
+          <p className="modal-copy">This removes the report and its photographs from this browser. This action cannot be undone.</p>
           <div className="modal-actions">
             <Button onClick={() => setModal(null)}>Keep report</Button>
             <Button className="danger-button" icon={Trash2} onClick={() => remove(modal.id)}>Delete report</Button>
@@ -1368,13 +1341,12 @@ function App() {
           <div className="help-content">
             <h3>Report workflow</h3>
             <p>Fields follow the same order as the AES inspection report. Dates can be typed directly or picked from the calendar, and Section 5.0 comes ready out of the box.</p>
-            <h3>Keep a backup</h3>
-            <p>Reports and photographs are saved in this browser on this device. Use Backup to download your editable reports, and Restore to import them elsewhere.</p>
+            <h3>Automatic saving</h3>
+            <p>Reports and photographs are saved automatically in this browser on this device. Use the Word and PDF downloads to keep a copy of the finished report.</p>
             <h3>Export in your AES format</h3>
             <p>Word export fills a cleaned copy of FINAL_DOC.docx. PDF export recreates the full bordered AES layout with automatic page breaks.</p>
           </div>
           <div className="modal-actions">
-            <Button icon={Download} disabled={!reports.length} onClick={() => backup(reports)}>Backup all reports</Button>
             <Button className="primary" onClick={() => setModal(null)}>Got it</Button>
           </div>
         </Modal>

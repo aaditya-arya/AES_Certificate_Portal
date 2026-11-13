@@ -1,8 +1,8 @@
 import {readFile} from 'node:fs/promises';
 import {newReport} from '../src/model.js';
 
-// Exercise the supported Restore flow without exposing template tools in the UI.
-export async function restoreSample(page,overrides={}) {
+// Test-only fixtures enter IndexedDB directly; no import/export feature is exposed.
+export async function seedSample(page,overrides={}) {
   const report=newReport();
   Object.assign(report,{reportNo:'AES/UX/REFERENCE/001',client:'M/s. Reference Client Limited',project:'Transformer inspection',manufacturer:'M/s. Reference Factory Limited',area:'Airoli',state:'Maharashtra',inspectionDate:'2026-11-07',reportDate:'2026-11-12',stages:['Final Inspection'],inspector:'Reference Inspector',reviewer:'Reference Reviewer',inspectorDate:'2026-11-07',reviewerDate:'2026-11-07'});
   Object.assign(report.persons[0],{name:'Reference Attendee',organization:'Reference Factory'});
@@ -13,7 +13,19 @@ export async function restoreSample(page,overrides={}) {
   Object.assign(report.expenses[0],{date:'2026-11-07',entry:'09:30',exit:'17:03',travel:'01 Hr.',km:'12'});
   report.photos=await Promise.all(Array.from({length:8},async(_,i)=>({id:crypto.randomUUID(),name:`photo-${i+1}.jpeg`,caption:`Inspection photograph ${i+1}`,data:`data:image/jpeg;base64,${(await readFile(`public/example/photo-${i+1}.jpeg`)).toString('base64')}`})));
   Object.assign(report,overrides);
-  await page.locator('input[accept="application/json,.json"]').setInputFiles({name:'reference-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'aes-report-backup-v1',reports:[report]}))});
+  await page.getByText('Saved locally',{exact:true}).waitFor();
+  await page.evaluate(report=>new Promise((resolve,reject)=>{
+    const request=indexedDB.open('keyval-store',1);
+    request.onupgradeneeded=()=>request.result.createObjectStore('keyval');
+    request.onerror=()=>reject(request.error);
+    request.onsuccess=()=>{
+      const db=request.result,transaction=db.transaction('keyval','readwrite'),store=transaction.objectStore('keyval');
+      const existing=store.get('aes-reports-v1');
+      existing.onsuccess=()=>store.put([report,...(existing.result||[])],'aes-reports-v1');
+      transaction.oncomplete=()=>{db.close();resolve();};transaction.onerror=()=>{db.close();reject(transaction.error);};
+    };
+  }),report);
+  await page.reload();
   await page.locator('.report-link').filter({hasText:report.reportNo}).click();
   await page.getByLabel('Client name',{exact:true}).waitFor();
 }
