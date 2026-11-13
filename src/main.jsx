@@ -7,14 +7,14 @@ import {
   CheckCircle2, Clock3, Search, Download, Upload, ImagePlus, Images, Trash2,
   Copy, FolderOpen, LayoutDashboard, ClipboardCheck, Settings2, ShieldCheck,
   Link2, Users, FileCheck2, X, Menu, Eye, Loader2, AlertCircle, MoveUp,
-  MoveDown, HardDrive, SlidersHorizontal, Pencil, RotateCcw
+  MoveDown, HardDrive, SlidersHorizontal, Pencil, RotateCcw, FlaskConical
 } from 'lucide-react';
 import {
   newReport, blankRow, sections, stages, columns, narrative, location,
   locationOrganization, requester, displayDate, endDateDisplay, accreditationType,
   parseDateToIso, isCapsText, defaultActivityDetails, defaultConclusion,
   defaultPending, defaultIdentification, defaultNonconformities, defaultEnclosures,
-  po, issues, calibrationRemark, uid, filterReports,
+  po, issues, calibrationRemark, uid, filterReports, loadSampleReport, hasReportContent,
   hydrateReport, searchReportFields, sectionForField, activityDetailsText, fieldCatalog, searchableFields
 } from './model';
 import {readReports, saveReports, download, imageFile} from './storage';
@@ -462,6 +462,28 @@ function App() {
     });
   };
 
+  const fillSample=async(targetId=null)=>{
+    if(busy)return;
+    const startingTarget=latest.current.find(report=>report.id===targetId);
+    setBusy('sample');
+    try{
+      const sample=await loadSampleReport();
+      const target=latest.current.find(report=>report.id===targetId);
+      if(target&&target!==startingTarget){alert('Your report changed while sample data was loading. Click Fill sample report again to review replacing it.');return;}
+      const filled=target?{...sample,id:target.id,createdAt:target.createdAt,updatedAt:new Date().toISOString()}:sample;
+      setReports(previous=>target?previous.map(report=>report.id===target.id?filled:report):[filled,...previous]);
+      open(filled);
+      setDirty(true);setSaveState('saving');
+      alert('Sample report filled. All sections and example photographs are ready to test.');
+    }catch(error){alert(error.message||'Could not fill the sample report. Please try again.');}
+    finally{setBusy('');}
+  };
+
+  const requestSample=()=>{
+    if(r&&hasReportContent(r)){setModal({type:'fill-sample',id:r.id});return;}
+    fillSample(r?.id);
+  };
+
   const manualSave = async () => {
     clearTimeout(saveTimer.current);
     setSaveState('saving');
@@ -691,6 +713,7 @@ function App() {
                   <p>Create, edit and download inspection reports.</p>
                 </div>
                 <div className="report-tools">
+                  <Button icon={FlaskConical} disabled={!!busy} onClick={()=>fillSample()}>{busy==='sample'?'Filling sample…':'Create sample report'}</Button>
                   <Button className="primary" icon={Plus} onClick={add}>Create report</Button>
                 </div>
               </div>
@@ -785,6 +808,8 @@ function App() {
                     </button>
                   )}
                 </div>
+
+                <Button className="sample-fill-button" icon={FlaskConical} disabled={!!busy} onClick={requestSample}>{busy==='sample'?'Filling sample…':'Fill sample report'}</Button>
 
               </div>
 
@@ -1292,6 +1317,11 @@ function App() {
           <button className="icon-button" aria-label="Dismiss notification" onClick={() => setToast('')}><X size={16} /></button>
         </div>
       )}
+
+      {modal?.type==='fill-sample'&&<Modal title="Replace this report with sample data?" onClose={()=>setModal(null)}>
+        <p className="modal-copy">This replaces the fields, rows, photographs and signatures in this report with sample data for testing. Create a separate sample to keep this report.</p>
+        <div className="modal-actions"><Button onClick={()=>setModal(null)}>Keep my report</Button><Button icon={Plus} onClick={()=>{setModal(null);fillSample();}}>Create separate sample</Button><Button className="primary" onClick={()=>{const id=modal.id;setModal(null);fillSample(id);}}>Replace with sample data</Button></div>
+      </Modal>}
 
       {modal?.type==='leave-warning'&&<Modal title="Leave this report?" onClose={()=>setModal(null)}>
         <p className="modal-copy">{saveState==='saved'?'Your latest changes are saved in this browser. Save and close this draft, or stay here to continue editing.':'Your latest changes have not finished saving. Save the draft before leaving to keep your work.'}</p>

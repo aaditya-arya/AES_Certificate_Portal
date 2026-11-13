@@ -10,7 +10,8 @@
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node tests/browser.mjs",
     "test:standards": "node tests/standards-scan.mjs",
-    "test:ux": "node tests/workspace-browser.mjs"
+    "test:ux": "node tests/workspace-browser.mjs",
+    "test:sample": "node tests/sample-fill-browser.mjs"
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",

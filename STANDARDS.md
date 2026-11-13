@@ -45,7 +45,7 @@ Widths tested: **320, 375, 390, 640, 768, 820, 1024, 1440, and 1920 CSS pixels**
 
 The workflow test covers typed/calendar dates, invalid date rejection, uppercase live formatting, all-field search and focus, continuous scrolling and active-section tracking, row/photo removal confirmations, failed-save protection, Word/PDF downloads, PDF preview, persistence, absence of backup/restore controls, and marking ready without section-completion gates. The default section 5.0 Word XML remains unchanged from the template.
 
-Additional release checks: nine model tests, production build, dependency audit, production preview/export smoke check, and Git whitespace checks. Generated reports and browser test artifacts stay in the ignored `test-results/` directory and are not part of the source push.
+Additional release checks: ten model tests, production build, dependency audit, production preview/export smoke check, and Git whitespace checks. Generated reports and browser test artifacts stay in the ignored `test-results/` directory and are not part of the source push.
 
 Automated checks and the documented keyboard flows are the scope of this verification, not a formal WCAG certification or exhaustive assistive-technology audit. The browser's built-in PDF viewer and exported PDFs are not covered by the web UI's axe result. See [VERIFICATION.md](VERIFICATION.md) for export fidelity and storage limits.
 
@@ -74,3 +74,7 @@ npm run test:ux
 ```
 
 Set `AES_TEST_URL` to change the origin. Set `CI=true` to use Playwright's bundled Chromium instead of installed Chrome. Each browser writes its workflow and standards results to separate JSON files in `test-results/`.
+
+## Sample-fill verification
+
+The sample-fill suite covers filling a blank form, creating a sample from the report list, all seven sections and eight photographs, canceling and confirming replacement, preserving the original through Create separate sample, Word/PDF export, save/reopen, failed table/photo loading, and edits made during loading. It checks the replacement dialog and filled form with axe, and reflow at 320, 390, 768 and 1440 px. Run `npm run test:sample` with the same browser and URL environment variables above.

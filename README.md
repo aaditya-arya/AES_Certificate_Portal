@@ -15,6 +15,10 @@ Open the Local URL printed by Vite. For production, run `npm run build` and serv
 
 ## Report workflow
 
+For a quick test, click **Create sample report** in the report list, or **Fill sample report** beside the field search inside a report. This populates all sections with sample values, current visit/sign-off dates, table rows and eight reference photographs. Report numbers start with `SAMPLE/AES/`. Signature images stay empty so you can test uploading your own.
+
+Existing entries require confirmation before replacement. Choose **Create separate sample** to keep the original report. Samples remain editable drafts and support Word/PDF export. A failed load, or an edit made while loading, leaves the existing report intact.
+
 1. Create a report or select Edit beside a saved report.
 2. Fill the continuous form, from report details through review and export.
 3. Check required details and download Word or PDF. Draft export is available at any time.
@@ -60,6 +64,7 @@ npm run dev -- --port 5174
 # In another terminal, with Google Chrome installed:
 node tests/browser.mjs
 node tests/workspace-browser.mjs
+node tests/sample-fill-browser.mjs
 # Override the test URL when using another port:
 $env:AES_TEST_URL='http://127.0.0.1:5173'
 node tests/browser.mjs

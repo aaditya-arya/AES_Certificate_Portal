@@ -162,3 +162,7 @@ body{color:var(--ink);background:#f3f6fa}
 @media(max-height:500px){.mobile-section-nav{position:relative;top:auto}.editor-open.sidebar-collapsed .sidebar{padding-top:20px}}
 
 html{scroll-padding-top:var(--section-offset,180px)}
+.form-utility-bar:has(.sample-fill-button){display:flex;align-items:center;gap:12px}
+.form-utility-bar .form-search-box{flex:1;min-width:0}
+.sample-fill-button{flex-shrink:0;min-height:54px}
+@media(max-width:820px){.form-utility-bar:has(.sample-fill-button){align-items:stretch;flex-direction:column}.sample-fill-button{width:100%}}

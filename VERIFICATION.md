@@ -15,6 +15,8 @@ Updated 13 November 2026 for the continuous form workflow. This supersedes the e
 | Comfortable entry | Main inputs use 18 px text, repeatable entries have individual labels, and descriptions have room to wrap. |
 | Export fidelity | Word fills the original template. Direct PDF recreates the AES layout with automatic pagination, embedded fonts, photo captions and wrapped names. |
 
-Nine model tests cover dates, linked narrative fields, validation, search, compound filters and legacy report preservation. Browser tests cover the continuous workflow, navigation and focus, shortcut behavior, filters, removal confirmations, storage failures, persistence, Word/PDF downloads and original section 5.0 XML. Accessibility and responsive results are documented in [STANDARDS.md](STANDARDS.md).
+Ten model tests cover dates, linked narrative fields, validation, search, compound filters and legacy report preservation. Browser tests cover the continuous workflow, navigation and focus, shortcut behavior, filters, removal confirmations, storage failures, persistence, Word/PDF downloads and original section 5.0 XML. Accessibility and responsive results are documented in [STANDARDS.md](STANDARDS.md).
 
 The earlier stress export verification confirmed all 130 activity tokens, 200 finding tokens, 250 caption tokens and a long inspector name in a multi-page PDF. The current change leaves PDF generation unchanged. Direct PDF export can paginate differently from Microsoft Word; use Word's Save as PDF for its exact rendering.
+
+Sample report creation and filling are available from the library and editor. Existing data requires confirmation before replacement; a separate sample preserves the original. Network failures and concurrent edits are tested to prevent accidental replacement. Sample reports pass required-field validation and support Word/PDF exports.

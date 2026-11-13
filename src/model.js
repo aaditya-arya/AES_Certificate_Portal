@@ -327,7 +327,9 @@ export async function loadExample() {
   }
   r.expenses = [{id: uid(), date: '2026-11-07', entry: '09:30', exit: '17:03', travel: '01 Hr.', km: '12'}];
   r.photos = await Promise.all(Array.from({length: 8}, async (_, i) => {
-    const b = await (await fetch(`/example/photo-${i + 1}.jpeg`)).blob();
+    const response=await fetch(`/example/photo-${i + 1}.jpeg`);
+    if(!response.ok)throw Error('Could not load the sample photographs. Please try again.');
+    const b = await response.blob();
     const data = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
@@ -337,6 +339,34 @@ export async function loadExample() {
     return {id: uid(), data, caption: t[12][Math.floor(i / 2) * 2 + 1][i % 2], name: `reference-${i + 1}.jpeg`};
   }));
   return r;
+}
+
+export function hasReportContent(report) {
+  const ignored=new Set(['id','createdAt','updatedAt','status','completedSteps']);
+  const clean=value=>Array.isArray(value)?value.map(clean):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).filter(([key])=>!ignored.has(key)).map(([key,val])=>[key,clean(val)])):value;
+  return JSON.stringify(clean(report))!==JSON.stringify(clean(newReport()));
+}
+
+export async function loadSampleReport() {
+  const report=await loadExample();
+  const day=today();
+  const shifted=days=>{const date=new Date(`${day}T00:00:00Z`);date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10);};
+  Object.assign(report,{
+    reportNo:`SAMPLE/AES/${day.replaceAll('-','')}/${uid().slice(0,6).toUpperCase()}`,
+    reportDate:day,inspectionDate:day,client:'M/s. Sample Copper Industries Ltd.',
+    project:'SAMPLE TRANSFORMER INSPECTION',manufacturer:'M/s. Sample Electrical Works Ltd.',
+    vendorPO:'SAMPLE-PO-1001',vendorPODate:shifted(-90),notification:'SAMPLE-INSPECTION-CALL-01',notificationDate:shifted(-2),
+    aesPO:'SAMPLE-AES-PO-2001',aesPODate:shifted(-30),street:'Plot 12, Industrial Estate',standards:'IS 2026 / IEC 60076',
+    requester:'M/s. Sample Copper Industries Ltd.',locationOrganization:'M/s. Sample Electrical Works Ltd.',
+    inspector:'Sample Inspector',reviewer:'Sample Reviewer',inspectorDate:day,reviewerDate:day,
+    inspectorSignature:'',reviewerSignature:'',status:'draft',completedSteps:[]
+  });
+  report.persons=[{id:uid(),name:'Sample Inspector',organization:'Akshar Engineering Services Pvt. Ltd.'},{id:uid(),name:'Sample Factory Representative',organization:report.manufacturer}];
+  report.documents=report.documents.map(row=>({...row,date:shifted(-14),revision:row.revision||'00',status:row.status||'Approved'}));
+  report.calibration=report.calibration.map(row=>({...row,date:shifted(-180),due:shifted(180)}));
+  report.expenses=report.expenses.map(row=>({...row,date:day}));
+  report.photos=report.photos.map((photo,index)=>({...photo,caption:`SAMPLE PHOTO ${index+1}: ${photo.caption}`}));
+  return report;
 }
 
 export const fieldCatalog = [

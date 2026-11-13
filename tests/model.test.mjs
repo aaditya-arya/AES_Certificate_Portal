@@ -1,9 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {newReport,narrative,generalRows,location,displayDate,issues,parseDateToIso,progress,stepDone,hydrateReport,searchReportFields,defaultActivityDetails,activityDetailsText,filterReports} from '../src/model.js';
+import {newReport,narrative,generalRows,location,displayDate,issues,parseDateToIso,progress,stepDone,hydrateReport,searchReportFields,defaultActivityDetails,activityDetailsText,filterReports,hasReportContent} from '../src/model.js';
 
 test('each repeatable data table starts with one row while metadata stays fixed',()=>{
  const r=newReport();for(const key of ['equipment','documents','activities','calibration','expenses','persons'])assert.equal(r[key].length,1,key);assert.equal(r.photos.length,0);assert.equal(generalRows(r).length,10);
+});
+
+test('sample filling distinguishes blank reports from user-entered fields, rows and photographs',()=>{
+ const fresh=newReport();assert.equal(hasReportContent(fresh),false);assert.equal(hasReportContent({...fresh,id:'other-id',updatedAt:'other-time'}),false);
+ for(const change of [{client:'Keep my client'},{revision:'01'},{activityDetails:'My findings'},{photos:[{id:'p',data:'data:image/jpeg;base64,abc',caption:'Keep me'}]},{persons:[{...fresh.persons[0],name:'My attendee'}]},{inspectorSignature:'data:image/png;base64,abc'}])assert.equal(hasReportContent({...fresh,...change}),true);
 });
 test('opening paragraph follows its source fields and stops at state',()=>{
  const r=newReport();Object.assign(r,{client:'M/s. Client',manufacturer:'M/s. Factory',street:'Factory road',area:'Airoli',city:'Navi Mumbai',state:'Maharashtra',postalCode:'400708',inspectionDate:'2026-11-07'});
