@@ -4,27 +4,33 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1",
+    "dev": "node --env-file-if-exists=.env.local scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "node --env-file-if-exists=.env.local server/index.js",
     "test": "node --test tests/*.test.mjs",
-    "test:browser": "node tests/browser.mjs",
-    "test:standards": "node tests/standards-scan.mjs",
-    "test:ux": "node tests/workspace-browser.mjs",
-    "test:sample": "node tests/sample-fill-browser.mjs"
+    "test:browser": "node tests/node-browser.mjs",
+    "test:standards": "node tests/node-browser.mjs",
+    "test:ux": "node tests/node-browser.mjs",
+    "test:sample": "node tests/node-browser.mjs",
+    "start": "node --env-file-if-exists=.env.local server/index.js",
+    "db:generate": "drizzle-kit generate",
+    "test:api": "node --test tests/api.test.mjs"
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.0",
-    "jszip": "^3.10.1",
-    "lucide-react": "^0.468.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.51.0",
+    "drizzle-kit": "^0.31.11",
+    "drizzle-orm": "^0.45.4",
+    "esbuild": "^0.28.2",
     "vite": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

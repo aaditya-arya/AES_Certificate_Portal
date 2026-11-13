@@ -1,24 +1,18 @@
-# Portal verification
+# Portal conversion verification
 
-Updated 13 November 2026 for the continuous form workflow. This supersedes the earlier step-by-step interface audit.
+Updated 13 November 2026 for the Node.js conversion.
 
-| Requirement | Verified behavior |
+| Requirement | Resulting behavior |
 |---|---|
-| Continuous report entry | All seven sections stay on one page; normal scrolling and section links update the active section. No completion or next-page gates remain. |
-| Sidebar | Reports open with a transparent compact section rail. The sidebar panel slides away, seven section names stay available, and the icon-only control supports Ctrl+B and a hover shortcut hint. Mobile uses a drawer and a sticky seven-section strip. |
-| Compact filters | Search-by, search text, accreditation, stage, status and date bounds fit two desktop rows. Filters combine and Reset clears them. |
-| Remove Backup and Restore | JSON backup generation, import controls and validation are removed. Existing IndexedDB reports are retained. Automatic saving and Word/PDF downloads remain. |
-| Dates and capitals | Dates can be typed or selected, impossible dates are identified, and uppercase entries and multiline uppercase lines appear bold. |
-| Safe navigation | Leave confirmation saves before navigating. Failed saves keep the editor open. Populated entry, photo and report removal require confirmation. |
-| Search | Names, guidance and entered scalar, row and photo values are indexed. Search jumps to and focuses the actual field in the continuous document. |
-| Original section 5.0 | Default Word export preserves the original template section XML, including paragraph and run formatting. Existing custom text is retained until explicitly reset. |
-| Comfortable entry | Main inputs use 18 px text, repeatable entries have individual labels, and descriptions have room to wrap. |
-| Export fidelity | Word fills the original template. Direct PDF recreates the AES layout with automatic pagination, embedded fonts, photo captions and wrapped names. |
+| Remove React | Plain JavaScript controller and HTML views; React, React DOM, JSX and Lucide React dependencies removed. |
+| Simple dashboard | Completed, Draft and Remaining counts are read from SQL. Cards filter the report list. |
+| SQL storage | Node uses `data/aes-portal.sqlite`; rows are retained in report JSON and image bytes in linked SQL tables. |
+| Standard REST API | Versioned CRUD, search/pagination, complete JSON export, dashboard counts, OpenAPI and a change feed. |
+| Preserve existing records | Same-origin browser reports migrate into SQL without overwriting existing server records or deleting the browser originals. |
+| Prevent lost updates | If-Match versions protect updates/deletion; database transactions keep report/media/event changes consistent. |
+| Preserve report entry | Seven continuous sections, large controls, typed/calendar dates, field search, linked narrative, table row controls, photographs and sign-off. |
+| Preserve sample fill | Fresh coherent random values, extended row counts and image preservation. |
+| Preserve report output | Word/PDF downloads and original section 5.0 XML preservation verified in browsers. |
+| Hosted continuity | Existing private Site uses the same API/schema through D1/R2; the standalone app uses Node/SQLite. |
 
-Twelve model tests cover dates, linked narrative fields, validation, search, compound filters and legacy report preservation. Browser tests cover the continuous workflow, navigation and focus, shortcut behavior, filters, removal confirmations, storage failures, persistence, Word/PDF downloads and original section 5.0 XML. Accessibility and responsive results are documented in [STANDARDS.md](STANDARDS.md).
-
-The earlier stress export verification confirmed all 130 activity tokens, 200 finding tokens, 250 caption tokens and a long inspector name in a multi-page PDF. The current change leaves PDF generation unchanged. Direct PDF export can paginate differently from Microsoft Word; use Word's Save as PDF for its exact rendering.
-
-Sample report creation and filling are available from the library and editor. Existing data requires confirmation before replacement; a separate sample preserves the original. Network failures and concurrent edits are tested to prevent accidental replacement. Sample reports pass required-field validation and support Word/PDF exports.
-
-The report sidebar now keeps the seven section links and the form in the same position through expansion/collapse. Sample data is regenerated on each fill; added rows and their identities, plus uploaded images, are preserved. Dates, quantities, table formats and the original section 5.0 text remain coherent.
+API/model tests and browser checks are described in [STANDARDS.md](STANDARDS.md). [API.md](API.md) describes the integration contract. Local and hosted storage locations are listed in [README.md](README.md).

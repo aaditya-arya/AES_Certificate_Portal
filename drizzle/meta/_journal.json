@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1794549231606,
+      "tag": "0000_swift_yellowjacket",
+      "breakpoints": true
+    }
+  ]
+}

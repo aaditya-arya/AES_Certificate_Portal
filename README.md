@@ -1,94 +1,86 @@
 # Akshar Engineering Services inspection portal
 
-A browser application for preparing AES inspection reports from `FINAL_DOC.docx` and the fields in `Format_Filled_Required.pdf`.
+A Node.js application with a plain HTML/CSS/JavaScript interface, a versioned REST API and SQL persistence. React and React DOM have been removed. The continuous AES form, original Word template, PDF export, photographs, typed/calendar dates, section navigation and random sample filling are retained.
 
 ## Run locally
 
-Requires Node.js 20.19+ or 22.12+.
+Requires Node.js 22.13 or newer.
 
 ```powershell
 npm ci
-npm run dev
+npm run build
+npm start
 ```
 
-Open the Local URL printed by Vite. For production, run `npm run build` and serve `dist/` over HTTP. Do not open `index.html` directly from the filesystem.
+Open http://127.0.0.1:3001. The SQL database is created automatically on first startup.
 
-## Report workflow
+For development, use `npm run dev`. This starts the Node API on port 3001 and the frontend on port 5173. `START_PORTAL.cmd` starts development mode. To use another frontend port, run `npm run dev -- --port 5174`.
 
-For a quick test, click **Create sample report** in the report list, or **Fill sample report** beside the field search inside a report. This populates all sections with fresh randomized values, consistent visit/sign-off dates, table rows and reference photographs. Report numbers start with `SAMPLE/AES/`. Signature images stay empty so you can test uploading your own.
+## Where data is stored
 
-Every click creates a new fictional inspection scenario. Dates and calibration validity stay consistent, and ordered quantities stay greater than or equal to offered and inspected quantities. Existing row counts and row IDs are retained, including rows added with the plus buttons. Existing uploaded photographs are retained with new sample captions; otherwise eight reference photographs are used. Section 5.0 stays in its original format.
+| Environment | Report data | Photographs and signatures |
+|---|---|---|
+| Local Node.js | `data/aes-portal.sqlite` | Binary image bytes in the same SQLite database |
+| Hosted Site | Cloudflare D1, binding `DB` | Cloudflare R2, binding `BUCKET` |
 
-Existing entries require confirmation before replacement. Choose **Create separate sample** to keep the original report. Samples remain editable drafts and support Word/PDF export. A failed load, or an edit made while loading, leaves the existing report intact.
+The default local database path is relative to this project. `DATABASE_PATH` can select another file. SQLite may also create `-wal` and `-shm` companion files while running. Database files, local environment files and test artifacts are ignored by Git. GitHub contains code and schema migrations, not saved user reports.
 
-1. Create a report or select Edit beside a saved report.
-2. Fill the continuous form, from report details through review and export.
-3. Check required details and download Word or PDF. Draft export is available at any time.
+SQL tables:
 
-The editor uses 18 px input text, clear labels and large controls. Repeatable entries appear as numbered cards with their own labels, descriptions and plus buttons. The report library has selected-field search, accreditation, stage, status and inspection-date filters arranged in two rows on desktop. Smaller layouts wrap the controls for readability. Each report has Edit, Word and PDF actions; duplication and deletion are under More.
+- `reports`: report JSON, searchable metadata, workflow state, timestamps and revision version. All six repeatable row arrays are retained inside the report JSON.
+- `report_media`: links between a report and its photographs/signatures.
+- `media_blobs`: deduplicated binary image bytes for the local Node server.
+- `report_changes`: incremental create/update/delete events for integration.
 
-Opening a report automatically collapses the workspace sidebar. Its panel slides away while all seven section links remain on the page background. In the editor, the seven links and form keep the same position and width in both sidebar states, avoiding jumps during toggles. The icon-only sidebar control expands or collapses it, with a hover hint and **Ctrl+B** shortcut that also works while typing. On phones, a sticky strip of seven section buttons supplements the navigation drawer.
+Existing IndexedDB reports are copied into SQL when opening the upgraded portal at the same browser origin used previously. Existing server reports are not overwritten during migration, and the original browser copy is retained. Separate origins and the local/hosted SQL databases do not synchronize automatically.
 
-All seven sections stay mounted on a single scrollable page. Section links scroll to their headings, and the highlighted link follows normal scrolling. There are no page switches, progress bars or section-completion buttons. The review checks required fields directly before the report can be marked ready. Form search finds field names, guidance and entered values across every section and focuses the matching field.
+## Dashboard and workflow
 
-Every report date can be typed (DD.MM.YYYY, DD/MM/YYYY, or ISO) or chosen through its keyboard-accessible calendar button. Invalid calendar dates are rejected by review validation and identified beside the input.
+The dashboard has three buttons: Completed (marked ready), Draft (required details filled and awaiting final review), and Remaining (required details still missing). Their counts come from SQL and each button filters the report list.
 
-Leaving a changed report opens a save-before-leaving dialog. A failed write keeps the editor open. Pending writes trigger the browser's native close/reload warning. Populated row removal, photograph removal, report deletion, and replacement of custom section 5.0 text require confirmation.
+Reports use one continuous form with seven section anchors. The selected section follows scrolling. The icon-only sidebar control supports Ctrl+B and keeps section links in the same place while its panel opens/closes. Inputs use large type; repeatable entries have individual labels and plus buttons.
 
-The ten-row report details table and stage selector have a fixed structure. Equipment, reference documents, activity rows, calibration instruments, expenditure entries, and attendees start with one data row each. Their plus buttons add rows only to those repeatable lists.
+Create sample report or Fill sample report generates realistic random values, preserves extended row counts and uploaded photographs, and retains the original section 5.0. Existing entries require confirmation before replacement. A separate sample preserves the original report.
 
-The opening paragraph derives the requester from the client by default, and the inspection organization from the manufacturer by default. Both links can be disabled for a different organization. Its location is **organization, locality, state**. Street, city, and PIN remain in the full address in the report details table. The visit date is reused in the paragraph.
+Changes save through the REST API. A failed save keeps the editor open; concurrent edits return a version conflict rather than overwriting another editor. Word and PDF remain available for drafts. Mark completed requires report validation to pass.
 
-Photographs are stored with individual descriptions, can be reordered, and export in two columns. Signature images are optional and must be uploaded by the user. Original specimen signatures are not included.
+## REST API and integration
 
-## Export fidelity
+See [API.md](API.md) for routes, JSON examples, authentication and integration guidance. The machine-readable contract is available at `/api/v1/openapi.json`.
 
-Word generation fills a cleaned copy of the original `FINAL_DOC.docx` package. It preserves the template's section order, table structures, page dimensions, branding, styles, headers, and footer page-number fields. Repeated rows and photograph pairs are cloned from their template rows. Word recalculates page numbers on opening. Dynamic content changes page count.
+The standard API is ready for another application to consume; no app-specific outbound integration is configured. Complete JSON export includes fields, rows, inline image data, the derived opening paragraph/location and version metadata. The change feed includes deletions.
 
-Section **5.0 Details of activities carried out** is included from the original document by default. Its original Word XML is left unchanged, preserving paragraphs, list numbering, indentation and emphasis. Existing custom content is retained for older drafts. Existing custom text remains editable; restoring the original requires confirmation. New reports use the original section automatically. Uppercase fields and uppercase lines are shown in bold in the form and formatted accordingly in exports. Original section 5.0 emphasis is preserved as supplied.
+## Configuration and hosting
 
-The direct PDF export recreates the AES layout with embedded Noto Sans fonts, repeating page headers, footers, automatic table pagination, and photograph captions. Its pagination and typography can differ from Microsoft Word. To obtain exactly Word's rendering, open the exported `.docx` in Word and use **Save as PDF**.
+Copy `.env.example` to `.env.local` when changing defaults. Node listens on localhost by default. Binding it to a network address requires `PORTAL_PASSWORD`; the browser username is `aes`. `API_KEY` enables Bearer-authenticated `/api/v1/integration/*` routes. The key is never embedded in frontend code. `ALLOWED_ORIGINS` is a comma-separated list of permitted browser origins for integrations.
 
-## Storage and access
+The existing private Site retains its URL and audience. Its hosting runtime uses a Worker adapter with D1/R2, while the standalone application runs on Node.js with SQLite. Both use the same validation, SQL schema, API and plain JavaScript frontend. `.openai/hosting.json` declares the hosted bindings. `drizzle/` contains generated schema migrations, applied on Node startup and by Sites during deployment. Request handlers never create database tables.
 
-All reports and uploaded images are stored in **IndexedDB in the current browser**, under this site's origin. This version has no shared database, staff accounts, device synchronization, external report approval, or email delivery. The hosted Site is owner-private. Site access is separate from report storage.
-
-Reports remain in their existing browser storage. Backup and Restore controls and their JSON import/export functionality have been removed. Existing reports and photographs are retained. Clearing browser data removes saved reports. Storage failures offer Retry save, and a failed save keeps the editor open. Word and PDF downloads remain available.
-
-“Ready” means the required-field checks passed and the user marked the report ready; it is not a third-party approval.
-
-## Validation
+## Verification
 
 ```powershell
-npm test
 npm run build
-npm run dev -- --port 5174
-# In another terminal, with Google Chrome installed:
-node tests/browser.mjs
-node tests/workspace-browser.mjs
-node tests/sample-fill-browser.mjs
-# Override the test URL when using another port:
-$env:AES_TEST_URL='http://127.0.0.1:5173'
-node tests/browser.mjs
+npm test
+npx playwright install chromium firefox
+npm run test:browser
+$env:AES_BROWSER='firefox'
+npm run test:browser
 ```
 
-The integration script checks typed and calendar dates, invalid dates, live uppercase formatting, field search and focus, continuous scrolling and active-section tracking, Ctrl+B, compact filters, row/photo confirmations, storage failure protection, persistence, Word/PDF downloads and original section 5.0 XML preservation. The UX suite checks compound report filters, input sizing and mobile layout. Verification files are written to the ignored `test-results/` directory. See [VERIFICATION.md](VERIFICATION.md) and [STANDARDS.md](STANDARDS.md) for the scope and browser commands.
+Browser tests use isolated in-memory SQL databases. API tests check disk persistence, version conflicts, image round-trips, filters, validation and integration authorization. Hosted adapter tests exercise SQL/R2 bindings. See [STANDARDS.md](STANDARDS.md) and [VERIFICATION.md](VERIFICATION.md).
 
 ## Source layout
 
-- `src/sample-data.js`: randomized sample scenarios that preserve extended rows and enforce coherent dates and quantities.
-- `src/model.js`: field schema, linked values, validation, reference example and validation.
-- `src/form-controls.jsx`: accessible typed/calendar dates, multiline live bold rendering, and report-detail rows.
-- `src/accessibility.css`: contrast, focus, control boundaries, reflow and reduced-height adjustments.
-- `src/workspace.css`: daily-use typography, compact section navigation, filters and labelled entry cards.
-- `src/focus.js`: dialog/drawer keyboard containment, focus restoration and shared scroll locking.
-- `src/standard-activity.json`: section 5.0 paragraphs extracted from the original Word document.
-- `src/main.jsx`: report library, form editor, review and export interactions.
-- `src/storage.js`: browser persistence, image preparation, Word/PDF file downloads.
-- `src/word.js`: fills the original Word template using namespace-aware XML.
-- `src/pdf.js`: direct PDF generation.
-- `public/report-template.docx`: cleaned original-format template.
-- `public/example/`: reference assets used for export verification.
-- `public/fonts/`: Noto Sans fonts and open font license for PDF embedding.
+- `server/index.js`: standalone Node HTTP server and local access configuration.
+- `server/api.js`: REST routes and HTTP errors.
+- `server/repository.js`: SQL report/media storage and change feed.
+- `server/validation.js`: report schema and workflow validation.
+- `server/sqlite.js`: local SQLite connection and migrations.
+- `db/schema.js`, `drizzle/`: SQL schema and generated migrations.
+- `src/app.js`, `src/views.js`, `src/library.js`: plain JavaScript controller and HTML views.
+- `src/api-client.js`: server persistence and one-time browser migration.
+- `src/model.js`, `src/sample-data.js`: report schema, validation and random samples.
+- `src/word.js`, `src/pdf.js`: AES report exports.
+- `worker/index.js`, `scripts/build.mjs`: hosted adapter and artifact packaging.
 
-All template, example, branding and font assets required to run or build the portal are included. Original source documents and generated reports are not required to build the application. The originals in the development workspace were left unchanged.
+Word fills the cleaned original template and preserves section 5.0 XML. Direct PDF export recreates the layout and may paginate differently from Microsoft Word. Use Word's Save as PDF for Word's exact rendering. Original source documents in the parent workspace are unchanged.
