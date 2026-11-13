@@ -1,6 +1,8 @@
 import {toBase64,toHex} from './binary.js';
 import {ApiError,workflow} from './validation.js';
 import {narrative,location,requester,endDateDisplay,parseDateToIso} from '../src/model.js';
+import {allocateNumber} from './numbering.js';
+import {reportNumberBase} from '../src/numbering.js';
 const statement=(sql,params=[])=>({sql,params});
 const like=value=>`%${value.replace(/[\\%_]/g,'\\$&')}%`;
 export function repository(db,bucket=null){
@@ -25,6 +27,7 @@ export function repository(db,bucket=null){
   const {report,media}=normalized,id=report.id,previous=await getRow(id),now=new Date().toISOString(),mutation=crypto.randomUUID(),version=expectedVersion+1;
   if((previous?.version||0)!==expectedVersion)throw new ApiError(409,'VERSION_CONFLICT','This report changed elsewhere. Reload it before saving.');
   if(expectedVersion===0&&!previous&&await db.get('SELECT sequence FROM report_changes WHERE report_id=? LIMIT 1',[id]))throw new ApiError(409,'ID_RETIRED','This report ID was deleted. Create a new report with a new ID.');
+  if(report.numberingMode==='automatic'&&!report.reportNo&&reportNumberBase(report)){const allocation=await allocateNumber(db,`report:${id}`,reportNumberBase(report),'report');report.reportNo=allocation.reference;report.visitSequence=String(allocation.sequence).padStart(2,'0');}
   report.createdAt=previous?.created_at||report.createdAt||now;report.updatedAt=now;
   const sql=[];
   const values=[JSON.stringify(report),version,mutation,workflow(report),report.reportNo,report.client,report.project,parseDateToIso(report.inspectionDate)||'',report.status,report.createdAt,now,id];
@@ -41,7 +44,7 @@ export function repository(db,bucket=null){
   sql.push(statement('INSERT INTO report_changes(report_id,version,operation,updated_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM reports WHERE id=? AND mutation_id=?)',[id,version,expectedVersion?'updated':'created',now,id,mutation]));
   if(!bucket)sql.push(statement('DELETE FROM media_blobs WHERE digest NOT IN (SELECT digest FROM report_media)'));
   const result=await db.batch(sql);if(!result[0].changes){if(bucket&&!await getRow(id))await purgeMedia(id);throw new ApiError(409,'VERSION_CONFLICT','This report changed elsewhere. Reload it before saving.');}
-  return {id,version,workflow:workflow(report),updatedAt:now,createdAt:report.createdAt};
+  return {id,version,workflow:workflow(report),updatedAt:now,createdAt:report.createdAt,reportNo:report.reportNo,numbering:{clientCode:report.clientCode,manufacturerCode:report.manufacturerCode,inspectorCode:report.inspectorCode,visitSequence:report.visitSequence}};
  }
  async function remove(id,version){
   if((await db.get('SELECT count(*) AS n FROM inspection_documents WHERE report_id=?',[id])).n)throw new ApiError(409,'LINKED_DOCUMENTS','This inspection has linked documents. Remove its draft documents first; issued documents must be retained.');

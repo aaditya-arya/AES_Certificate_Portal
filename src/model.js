@@ -124,6 +124,11 @@ export function newReport() {
     completedSteps: [],
     activityDetailsMode: 'template',
     reportNo: '',
+    numberingMode: 'automatic',
+    clientCode: '',
+    manufacturerCode: '',
+    inspectorCode: '',
+    visitSequence: '',
     revision: '00',
     reportDate: today(),
     client: '',
@@ -284,6 +289,7 @@ export async function loadExample() {
   };
   Object.assign(r, {
     reportNo: 'AESPL/IACL/BEPL/IR/AS/2611/0701',
+    numberingMode:'manual',
     reportDate: '2026-11-07',
     client: t[0][0][1],
     project: t[0][1][1],
@@ -349,6 +355,7 @@ export function hasReportContent(report) {
 
 export const fieldCatalog = [
   [0,'reportNo','Inspection visit report number','Report header reference'],
+  [0,'clientCode','Client code','AES numbering code'],[0,'manufacturerCode','Manufacturer code','AES numbering code'],[0,'inspectorCode','Inspector code','AES numbering code'],
   [0,'revision','Revision','Report header revision'],[0,'reportDate','Report date','Header issue date','date'],
   [0,'client','Client name','Organization commissioning the project'],[0,'project','Project name','Plant or substation title'],
   [0,'vendorPO','PO number · client to vendor','Client purchase order issued to manufacturer'],[0,'vendorPODate','PO date · client to vendor','Purchase order date','date'],
@@ -391,6 +398,7 @@ export function activityDetailsText(r) {
 export function hydrateReport(raw) {
   const base = newReport();
   const report={...base,...raw,
+    numberingMode:raw.numberingMode||(raw.reportNo?'manual':'automatic'),
     completedSteps:Array.isArray(raw.completedSteps)?raw.completedSteps.filter(x=>Number.isInteger(x)&&x>=0&&x<=6):raw.status==='ready'?[0,1,2,3,4,5,6]:[],
     activityDetailsMode:raw.activityDetailsMode || (raw.activityDetails===defaultActivityDetails?'template':'custom')};
   const pending=issues(report);

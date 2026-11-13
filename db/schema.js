@@ -32,3 +32,5 @@ export const documentVersions=sqliteTable('document_versions',{
 export const documentEvents=sqliteTable('document_events',{
  sequence:integer('sequence').primaryKey({autoIncrement:true}),documentId:text('document_id').notNull(),type:text('type').notNull(),version:integer('version').notNull(),operation:text('operation').notNull(),updatedAt:text('updated_at').notNull()
 });
+export const numberCounters=sqliteTable('number_counters',{scope:text('scope').primaryKey(),value:integer('value').notNull()});
+export const numberAllocations=sqliteTable('number_allocations',{owner:text('owner').primaryKey(),scope:text('scope').notNull(),sequence:integer('sequence').notNull(),reference:text('reference').notNull()},table=>[uniqueIndex('number_reference_unique').on(table.reference)]);

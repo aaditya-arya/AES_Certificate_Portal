@@ -24,6 +24,8 @@ The UI/PDF revision is covered by `node tests/refined-browser.mjs` in Chrome and
 
 Linked-document checks: `tests/documents.test.mjs` verifies upgrade from the original SQL schema without losing inspections, concurrent edits, all four module lifecycles, immutable history, attachment access/export/cleanup, linked-inspection deletion protection, release/closure requirements and invalid inputs. The hosted Worker test exercises document routes with D1/R2-compatible bindings. `node tests/documents-browser.mjs` covers all four editors/registers in Chrome and Firefox, inherited inspection fields/items, files, Word/PDF downloads, revision history, closure, related-document shortcuts, cancellation reasons, mobile reflow, accessibility and failed-save/unsaved-change protection. No writes were made to the Samsung reference portal during its review.
 
+`tests/numbering.test.mjs` covers AES formatting, code overrides, concurrent allocations, stable and legacy references, deletion/non-reuse, ready-report validation and child-document sequences. `node tests/master-details-browser.mjs` covers code suggestions/overrides, typed dates, automatic reference display, live ten-row preview/narrative, code-field search, linked numbering, accessibility and desktop/mobile layouts in Chrome and Firefox. The reviewed Samsung Inspection Decide page exposed an application dossier and shared PO/application reference structure; its internal counter/date allocation algorithm was not inferred as fact from a single record. AES uses the separately selected AES reference format.
+
 ## Reproduce
 
 ```powershell

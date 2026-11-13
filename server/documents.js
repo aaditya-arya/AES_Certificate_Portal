@@ -2,6 +2,8 @@ import {ApiError,fail,validId} from './validation.js';
 import {newDocument,documentTypes,documentIssues,issueTypes,itemFields} from '../src/document-model.js';
 import {parseDateToIso,location} from '../src/model.js';
 import {fromBase64,toBase64,toHex,ascii} from './binary.js';
+import {allocateNumber} from './numbering.js';
+import {documentNumberBase} from '../src/numbering.js';
 const sql=(sql,params=[])=>({sql,params});
 const text=(value,label,max=100000)=>{if(typeof value!=='string'||value.length>max)fail(422,'INVALID_FIELD',`${label} must be text of at most ${max} characters.`);return value;};
 const date=value=>parseDateToIso(value)||value;
@@ -10,7 +12,7 @@ const contextOf=row=>{const r=JSON.parse(row.document);return {reportId:r.id,rep
 
 export function documentsRepository(db,bucket=null){
  const row=id=>db.get('SELECT * FROM inspection_documents WHERE id=?',[id]);
- const publicRecord=value=>({...JSON.parse(value.document),context:JSON.parse(value.context),version:value.version,createdAt:value.created_at,updatedAt:value.updated_at});
+ const publicRecord=value=>({numberingMode:'manual',...JSON.parse(value.document),context:JSON.parse(value.context),version:value.version,createdAt:value.created_at,updatedAt:value.updated_at});
  async function detail(id,version){
   const current=await row(id);if(!current)fail(404,'NOT_FOUND','Document not found.');
   if(version){const historic=await db.get('SELECT * FROM document_versions WHERE document_id=? AND version=?',[id,version]);if(!historic)fail(404,'NOT_FOUND','Document version not found.');return {...JSON.parse(historic.document),context:JSON.parse(historic.context),version:historic.version,recordedAt:historic.recorded_at,historical:true};}
@@ -34,7 +36,7 @@ export function documentsRepository(db,bucket=null){
   if(input.status!==undefined&&input.status!==(previous?.status||'draft'))fail(422,'INVALID_STATUS','Use a document transition to change its status.');
   record.status=previous?.status||'draft';record.revision=previous?.revision||'00';
   for(const key of ['date','targetDate','closedDate'])record[key]=date(record[key]);
-  if(!record.number.trim()||record.number.length>200)fail(422,'INVALID_NUMBER','Enter a document number of at most 200 characters.');
+  record.numberingMode=input.numberingMode||(previous?JSON.parse(previous.document).numberingMode||'manual':'automatic');if(!['automatic','manual'].includes(record.numberingMode))fail(422,'INVALID_NUMBERING','Choose automatic or manual document numbering.');
   if(record.result&&!['Accepted','Accepted with comments','Rejected'].includes(record.result))fail(422,'INVALID_RESULT','Select a valid inspection result.');
   for(const [key,,kind,values]of documentTypes[record.type].fields)if(kind==='select'&&record[key]&&!values.includes(record[key]))fail(422,'INVALID_FIELD',`Select a valid ${key}.`);
   if(!Array.isArray(input.items)||input.items.length>500)fail(422,'INVALID_ITEMS','Use at most 500 item rows.');
@@ -60,6 +62,8 @@ export function documentsRepository(db,bucket=null){
   if(total>20*1024*1024)fail(422,'ATTACHMENTS_TOO_LARGE','All attached files together must be at most 20 MB.');
   if(new Set(record.attachments.map(item=>item.id)).size!==record.attachments.length)fail(422,'INVALID_ATTACHMENTS','An attachment can only appear once.');
   const parent=await db.get('SELECT id,document FROM reports WHERE id=?',[record.reportId]);if(!parent)fail(422,'INVALID_LINK','The linked inspection report no longer exists.');
+  if(record.numberingMode==='automatic'&&!record.number){const base=documentNumberBase(JSON.parse(parent.document).reportNo,record.type);if(!base)fail(422,'INSPECTION_UNNUMBERED','Save a numbered inspection first, or use a manual document number.');record.number=(await allocateNumber(db,`document:${record.id}`,base,'document')).reference;}
+  if(!record.number.trim()||record.number.length>200)fail(422,'INVALID_NUMBER','Enter a document number of at most 200 characters.');
   const context=contextOf(parent);if(new TextEncoder().encode(JSON.stringify(record)+JSON.stringify(context)).length>1500000)fail(422,'DOCUMENT_TOO_LARGE','Reduce the text content: document fields and inspection context together must be below 1.5 MB.');
   return {record,files,context};
  }

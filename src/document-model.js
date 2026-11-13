@@ -12,7 +12,7 @@ export const itemFields=[['tag','Item / tag no.'],['description','Item descripti
 export const newDocumentItem=()=>({id:crypto.randomUUID(),tag:'',description:'',quantity:'',inspection:'',result:'',priority:'Normal',owner:'',dueDate:'',status:'open',resolution:''});
 export function newDocument(type,reportId=''){
  if(!documentTypes[type])throw Error('Unknown document type.');
- return {id:crypto.randomUUID(),type,reportId,number:`${documentTypes[type].prefix}/${today().replaceAll('-','')}/${crypto.randomUUID().slice(0,8).toUpperCase()}`,revision:'00',date:today(),status:'draft',preparedBy:'',reviewedBy:'',result:'',owner:'',targetDate:'',closedDate:'',...Object.fromEntries(documentTypes[type].fields.map(([key])=>[key,''])),items:[newDocumentItem()],attachments:[]};
+ return {id:crypto.randomUUID(),type,reportId,number:'',numberingMode:'automatic',revision:'00',date:today(),status:'draft',preparedBy:'',reviewedBy:'',result:'',owner:'',targetDate:'',closedDate:'',...Object.fromEntries(documentTypes[type].fields.map(([key])=>[key,''])),items:[newDocumentItem()],attachments:[]};
 }
 export function documentIssues(record,closing=false){
  const messages=[];

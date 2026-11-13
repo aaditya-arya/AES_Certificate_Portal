@@ -21,7 +21,7 @@ export function randomizeSampleReport(reference,target=null,random=Math.random) 
   const manufacturer=`M/s. ${pick(['Deccan Electrical Works','Crest Power Systems','Western Transformer Works','Eastern Electromechanical'])} Ltd.`;
   const name=()=>`${pick(['Aarav','Rohan','Neha','Meera','Vikram','Ananya'])} ${pick(['Shah','Kulkarni','Rao','Patel','Mehta','Sharma'])} (Sample)`;
   const report=Object.assign(newReport(),{
-    reportNo:`SAMPLE/AES/${day.replaceAll('-','')}/${job}-${uid().slice(0,6).toUpperCase()}`,
+    reportNo:`SAMPLE/AES/${day.replaceAll('-','')}/${job}-${uid().slice(0,6).toUpperCase()}`,numberingMode:'manual',
     revision:String(integer(0,3)).padStart(2,'0'),reportDate:day,client,manufacturer,
     project:`${pick(['132/33kV','220/33kV','110/11kV'])} ${pick(['COPPER PLANT','STEEL PLANT','INDUSTRIAL SUBSTATION'])} - SAMPLE ${job}`,
     vendorPO:`SAMPLE/PO/${integer(1000,9999)}/${job}`,vendorPODate:shifted(visit,-integer(45,120)),

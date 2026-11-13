@@ -73,7 +73,7 @@ test('release safeguards and invalid links, statuses, files, transitions and dup
   const {report,document}=await fixture(call,'ncr');let ncr=(await call('POST','/documents',document)).body.data;await call('POST',`/documents/${ncr.id}/transitions`,{action:'issue'},1);
   const irc=newDocument('irc',report.id);Object.assign(irc,{preparedBy:'Inspector',reviewedBy:'Reviewer',releaseDecision:'Released',certificateScope:'Transformer'});irc.items[0].description='Transformer';let saved=(await call('POST','/documents',irc)).body.data;
   assert.equal((await call('POST',`/documents/${saved.id}/transitions`,{action:'issue'},1)).body.error.code,'OPEN_QUALITY_ITEMS');
-  const duplicate={...irc,id:crypto.randomUUID()};assert.equal((await call('POST','/documents',duplicate)).status,409);
+  const duplicate={...irc,id:crypto.randomUUID(),number:saved.number,numberingMode:'manual'};assert.equal((await call('POST','/documents',duplicate)).status,409);
   assert.equal((await call('POST','/documents',{...irc,id:crypto.randomUUID(),number:'INVALID',reportId:'missing'})).status,422);
   assert.equal((await call('PUT',`/documents/${saved.id}`,{...fields(saved),status:'issued'},1)).status,422);
   assert.equal((await call('POST','/documents',{...irc,id:crypto.randomUUID(),number:'BAD FILE',attachments:[{id:crypto.randomUUID(),name:'fake.pdf',data:'data:application/pdf;base64,SGVsbG8='}]})).status,422);

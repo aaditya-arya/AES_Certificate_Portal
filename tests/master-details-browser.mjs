@@ -1,0 +1,27 @@
+import {once} from 'node:events';
+import {mkdir} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import {expect} from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import {startServer} from '../server/index.js';
+import {launchBrowser,browserName} from './browser-engine.mjs';
+const running=startServer({port:0,database:':memory:'});await once(running.server,'listening');const origin=`http://127.0.0.1:${running.server.address().port}`;
+const browser=await launchBrowser(),context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));page.setDefaultTimeout(20000);await mkdir(`test-results/master-${browserName}`,{recursive:true});
+const saved=()=>expect(page.locator('#save-state')).toContainText('Saved to database');
+async function scan(name){const result=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa','best-practice']).analyze();assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],name);console.log(`${browserName} ${name}: clean`);}
+try{
+ await page.goto(origin);await page.getByRole('button',{name:'Create report',exact:true}).first().click();await expect(page.getByLabel('Automatic AES numbering',{exact:true})).toBeChecked();await expect(page.getByLabel('Inspection visit report no.',{exact:true})).toHaveAttribute('readonly','');
+ await page.getByLabel('Client name',{exact:true}).fill('M/s. Indo Asia Copper Limited.');await page.getByLabel('Project name',{exact:true}).fill('Copper plant');await page.getByLabel('Manufacturer / supplier',{exact:true}).fill('M/s. Bharat Bijlee Limited.');
+ await page.locator('.numbering-options summary').click();await expect(page.getByLabel('Client code',{exact:true})).toHaveValue('IACL');await page.getByLabel('Manufacturer code',{exact:true}).fill('bepl');await page.getByLabel('Inspector code',{exact:true}).fill('as');
+ await page.getByLabel('PO number · client to vendor',{exact:true}).fill('PO/JFD/CP/ELE/10');await page.getByLabel('PO date · client to vendor',{exact:true}).fill('23.05.2026');
+ await page.getByLabel('Street / address',{exact:true}).fill('Plot 53');await page.getByLabel('Area / locality',{exact:true}).fill('Airoli');await page.getByLabel('City',{exact:true}).fill('Navi Mumbai');await page.getByLabel('State',{exact:true}).fill('Maharashtra');await page.getByLabel('PIN code',{exact:true}).fill('400708');await page.getByLabel('Date of inspection',{exact:true}).fill('07.11.2026');
+ await expect(page.getByLabel('Inspection visit report no.',{exact:true})).toHaveValue('AESPL/IACL/BEPL/IR/AS/2611/0701');await saved();
+ await page.locator('.master-preview summary').click();await expect(page.locator('#master-table-rows')).toContainText('PO/JFD/CP/ELE/10; Dated: 23.05.2026');await expect(page.locator('#master-table-rows')).toContainText('Navi Mumbai');await expect(page.locator('#generated-narrative')).toContainText('Airoli, Maharashtra On 07.11.2026');await expect(page.locator('#generated-narrative')).not.toContainText('Navi Mumbai');
+ await page.getByLabel('Client name',{exact:true}).fill('M/s. UPDATED CLIENT LIMITED');await expect(page.locator('#master-table-rows tr').nth(7)).toContainText('UPDATED CLIENT');await expect(page.locator('#generated-narrative')).toContainText('UPDATED CLIENT');await saved();await expect(page.getByLabel('Inspection visit report no.',{exact:true})).toHaveValue('AESPL/IACL/BEPL/IR/AS/2611/0701');
+ await page.getByRole('textbox',{name:'Search fields inside this form'}).fill('Manufacturer code');await page.getByRole('region',{name:'Field search results'}).getByRole('button').first().click();await expect(page.getByLabel('Manufacturer code',{exact:true})).toBeFocused();
+ await page.evaluate(()=>scrollTo(0,0));await scan('Automatic numbering form');await page.screenshot({path:`test-results/master-${browserName}/inspection-details.png`});
+ for(const width of [320,390,768,1024,1440]){await page.setViewportSize({width,height:900});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);}
+ await page.setViewportSize({width:390,height:844});await page.evaluate(()=>scrollTo(0,0));await scan('Mobile master details');await page.screenshot({path:`test-results/master-${browserName}/mobile-details.png`});
+ await page.getByRole('button',{name:'All inspection reports',exact:true}).click();await page.getByRole('button',{name:'Related documents',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Flash reports',exact:true}).click();await page.getByRole('button',{name:'Create flash report',exact:true}).click();await expect(page.locator('#doc-context')).toContainText('UPDATED CLIENT');await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByLabel('Document number',{exact:true})).toHaveValue('AESPL/IACL/BEPL/FR/AS/2611/0701/01');
+ assert.deepEqual(errors,[]);console.log(`${browserName}: AES code suggestions/overrides, allocated numbers, stable references, source-table derivation, field search, linked numbering and responsive master form passed.`);
+}catch(error){console.log('Page errors:',errors);await page.screenshot({path:`test-results/master-${browserName}/failure.png`});throw error;}finally{await context.close();await browser.close();await running.close();}

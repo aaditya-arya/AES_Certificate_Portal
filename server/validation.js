@@ -1,5 +1,6 @@
 import {fromBase64,ascii} from './binary.js';
 import {newReport,columns,stages,issues,fieldCatalog,parseDateToIso} from '../src/model.js';
+import {numberingCodes,reportNumberBase} from '../src/numbering.js';
 const dateFields=new Set(fieldCatalog.filter(field=>field[4]==='date').map(field=>field[1]));
 export class ApiError extends Error{constructor(status,code,message,details){super(message);this.status=status;this.code=code;this.details=details;}}
 export const fail=(status,code,message,details)=>{throw new ApiError(status,code,message,details);};
@@ -41,10 +42,14 @@ export function normalizeReport(input,id){
  if(input.createdAt!==undefined){if(typeof input.createdAt!=='string'||!Number.isFinite(Date.parse(input.createdAt)))fail(422,'INVALID_FIELD','createdAt must be an ISO date-time.');result.createdAt=new Date(input.createdAt).toISOString();}
  if(result.requesterIsClient)result.requester=result.client;
  if(result.locationIsManufacturer)result.locationOrganization=result.manufacturer;
+ if(!input.numberingMode)result.numberingMode=input.reportNo?'manual':'automatic';
+ if(!['automatic','manual'].includes(result.numberingMode))fail(422,'INVALID_NUMBERING','Select automatic or manual numbering.');
+ if(result.numberingMode==='automatic'){Object.assign(result,numberingCodes(result));for(const key of ['clientCode','manufacturerCode','inspectorCode'])if(result[key]&&!/^[A-Z0-9]{1,12}$/.test(result[key]))fail(422,'INVALID_CODE','Use up to 12 letters or digits for each numbering code.');}
  if(input.id&&id&&input.id!==id)fail(422,'ID_MISMATCH','The report ID must match the URL.');
  if(!['draft','ready'].includes(result.status))fail(422,'INVALID_STATUS','Status must be draft or ready.');
  if(!['template','custom'].includes(result.activityDetailsMode))fail(422,'INVALID_MODE','Activity text mode must be template or custom.');
- if(result.status==='ready'&&issues(result).length)fail(422,'INCOMPLETE_REPORT','Required details are missing.',issues(result));
+ const pending=issues(result).filter(issue=>!(result.numberingMode==='automatic'&&!result.reportNo&&reportNumberBase(result)&&issue.message==='Enter the inspection visit report number.'));
+ if(result.status==='ready'&&pending.length)fail(422,'INCOMPLETE_REPORT','Required details are missing.',pending);
  result.completedSteps=result.status==='ready'?[0,1,2,3,4,5,6]:[];
  return {report:result,media};
 }

@@ -40,6 +40,12 @@ The dashboard has three buttons: Completed (marked ready), Draft (required detai
 
 Reports use one continuous form with seven section anchors. The selected section follows scrolling. The icon-only control sits on the sidebar edge, appears when hovering the sidebar or left screen edge, and changes direction with its state. Keyboard focus reveals it and Ctrl+B toggles it. Section links retain their positions while its panel opens/closes. The company logo returns to the report list. Inputs use large type; repeatable entries have individual labels and plus buttons.
 
+The first inspection section follows the report's ten-row source table. Requester, location, PO/date text, attendee text and the opening paragraph derive from those inputs. **Preview report details & opening paragraph** shows the live output without repeating editable fields.
+
+New inspections default to AES numbering: `AESPL/{clientCode}/{manufacturerCode}/IR/{inspectorCode}/{YYMM}/{DD}{sequence}`. The date comes from the inspection date, not the date the user opens the form. Codes are suggested from names and can be adjusted under **Numbering codes & format**; assigned company/inspector codes may differ from initials. SQL allocates a minimum two-digit visit sequence for each code/date combination. Number allocation waits until codes and a valid inspection date are available. Assigned references stay fixed when the other inspection details change; existing saved/manual and sample references are preserved.
+
+Linked document numbers inherit that inspection reference, replacing `/IR/` with `/FR/`, `/IRC/`, `/PL/` or `/NCR/` and adding their own `/01`, `/02`, … sequence. Existing custom parent numbers use `{parent}/{type}/{sequence}`. Manual numbering remains available. SQL tables `number_counters` and `number_allocations` retain reservations after deletion or a failed save, so sequences can have gaps and allocated references are not reused. Existing manual references are considered when allocating new numbers.
+
 Create sample report or Fill sample report generates realistic random values, preserves extended row counts and uploaded photographs, and retains the original section 5.0. Existing entries require confirmation before replacement. A separate sample preserves the original report.
 
 Changes save through the REST API. A failed save keeps the editor open; concurrent edits return a version conflict rather than overwriting another editor. Word and PDF remain available for drafts. Mark completed requires report validation to pass.

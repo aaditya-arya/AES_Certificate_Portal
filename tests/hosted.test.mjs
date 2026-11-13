@@ -13,7 +13,7 @@ test('hosted Worker serves the plain frontend and persists reports and images th
  try{
   const home=await call('/');assert.equal(home.status,200);assert.ok(gunzipSync(new Uint8Array(await home.arrayBuffer())).toString().includes('/assets/index-'));
   assert.equal((await(await call('/api/v1/health')).json()).data.storage,'d1');
-  const report=newReport(),image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7z8AAAAASUVORK5CYII=';report.photos=[{id:'hosted-photo',data:image,name:'hosted.png',caption:'Hosted image round-trip'}];
+  const report=newReport(),image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7z8AAAAASUVORK5CYII=';report.reportNo='AES/HOSTED/001';report.photos=[{id:'hosted-photo',data:image,name:'hosted.png',caption:'Hosted image round-trip'}];
   const created=await call('/api/v1/reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(report)});assert.equal(created.status,201);assert.equal(objects.size,1);assert.equal((await db.get('SELECT count(*) AS n FROM media_blobs')).n,0);
   const detail=await(await call(`/api/v1/reports/${report.id}`)).json();assert.equal(detail.data.report.photos[0].data,image);
   const document=newDocument('flash',report.id);document.attachments=[{id:crypto.randomUUID(),name:'document.png',data:image,caption:'Document evidence'}];
