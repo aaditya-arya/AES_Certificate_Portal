@@ -20,6 +20,8 @@ The hosted adapter test checks the built frontend, D1 API behavior and R2 image 
 
 Development proxy regression tests send actual Origin headers through Vite for both localhost and 127.0.0.1, while verifying unrelated origins remain blocked. `node tests/sidebar-browser.mjs` checks browser saves through that proxy, left-edge hover, icon direction, keyboard controls, stable section positions, logo navigation and mobile scroll restoration in Chrome or Firefox. The hosted verification script also sends the Site's Origin header.
 
+The UI/PDF revision is covered by `node tests/refined-browser.mjs` in Chrome and Firefox: single-row search, secondary-filter controls, reset/search behavior, mobile filters, responsive form layouts and accessibility scans. It generates reference, randomized and extended-row PDF fixtures. `python scripts/check-pdf.py` (PyMuPDF required) checks the reference's four-page structure, repeated headers/footers, text bounds and end markers. Fonts use bundled Carlito with its SIL OFL license. This approximates Aptos; the PDF is not pixel-identical to the Word renderer.
+
 ## Reproduce
 
 ```powershell

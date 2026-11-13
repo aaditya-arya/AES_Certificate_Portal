@@ -11,7 +11,7 @@ const vite=await createServer({server:{host:'127.0.0.1',port:0,proxy:{'/api':{ta
 const browser=await launchBrowser(),context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 const control=()=>page.locator('.sidebar-toggle-button');
-const home=()=>page.getByRole('heading',{name:'Inspection reports.',exact:true});
+const home=()=>page.getByRole('heading',{name:/^Inspection reports\.?$/,exact:true});
 try{
  await page.goto(`http://localhost:${vite.httpServer.address().port}`);await home().waitFor();
  await page.mouse.move(900,500);await expect(page.locator('.sidebar-toggle-wrap')).toHaveCSS('opacity','0');

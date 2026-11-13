@@ -21,22 +21,23 @@ const clean = value => String(value ?? '').replace(/\r\n/g,'\n');
 export async function generatePDF(r) {
   const [logo, regular, bold] = await Promise.all([
     imageData('/aes-logo.jpg'),
-    imageData('/fonts/NotoSans-Regular.ttf'),
-    imageData('/fonts/NotoSans-Bold.ttf')
+    imageData('/fonts/Carlito-Regular.ttf'),
+    imageData('/fonts/Carlito-Bold.ttf')
   ]);
   const pdf = new jsPDF({unit: 'pt', format: 'letter', compress: true});
-  pdf.addFileToVFS('NotoSans-Regular.ttf', regular.split(',')[1]);
-  pdf.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
-  pdf.addFileToVFS('NotoSans-Bold.ttf', bold.split(',')[1]);
-  pdf.addFont('NotoSans-Bold.ttf', 'NotoSans', 'bold');
+  pdf.addFileToVFS('Carlito-Regular.ttf', regular.split(',')[1]);
+  pdf.addFont('Carlito-Regular.ttf', 'Carlito', 'normal');
+  pdf.addFileToVFS('Carlito-Bold.ttf', bold.split(',')[1]);
+  pdf.addFont('Carlito-Bold.ttf', 'Carlito', 'bold');
   pdf.setProperties({
     title: `Inspection Report - ${r.reportNo}`,
     author: 'Akshar Engineering Services Pvt. Ltd.',
     subject: r.project
   });
 
-  const left=36,width=540,bottom=738;
-  pdf.setFont('NotoSans','normal');pdf.setFontSize(11);
+  const left=36,width=546,bottom=738;
+  pdf.setFont('Carlito','normal');pdf.setFontSize(11);
+  pdf.setFontSize(14);
   const headerLines=pdf.splitTextToSize(clean(r.reportNo),282);
   const headerOffset=Math.max(0,headerLines.length-1)*14;
   const top=140+headerOffset;
@@ -48,29 +49,29 @@ export async function generatePDF(r) {
     if (drawnHeaders.has(pageNumber)) return;
     drawnHeaders.add(pageNumber);
     pdf.setTextColor(...navy);
-    pdf.setFont('NotoSans', 'bold');
-    pdf.setFontSize(19);
+    pdf.setFont('Carlito', 'bold');
+    pdf.setFontSize(22.5);
     pdf.text('INSPECTION REPORT', 180, 43, {align: 'center'});
     pdf.setDrawColor(...blue);
     pdf.setLineWidth(1.2);
     pdf.line(36, 50, 325, 50);
-    pdf.setFontSize(12);
+    pdf.setFontSize(14);
     pdf.text('Inspection Visit Report No.:', 38, 65);
-    pdf.setFont('NotoSans', 'normal');
-    pdf.setFontSize(11);
+    pdf.setFont('Carlito', 'normal');
+    pdf.setFontSize(14);
     const lines = pdf.splitTextToSize(clean(r.reportNo), 282);
     pdf.text(lines, 38, 80);
     pdf.line(36,86+headerOffset,325,86+headerOffset);
     const offset=headerOffset;
-    pdf.setFont('NotoSans', 'bold');
+    pdf.setFont('Carlito', 'bold');
     pdf.text('Revision:', 38, 100 + offset);
-    pdf.setFont('NotoSans', 'normal');
-    pdf.text(clean(r.revision), 91, 100 + offset);
+    pdf.setFont('Carlito', 'normal');
+    pdf.text(clean(r.revision), 100, 100 + offset);
     pdf.line(36, 106 + offset, 325, 106 + offset);
-    pdf.setFont('NotoSans', 'bold');
+    pdf.setFont('Carlito', 'bold');
     pdf.text('Date:', 38, 120 + offset);
-    pdf.setFont('NotoSans', 'normal');
-    pdf.text(displayDate(r.reportDate), 70, 120 + offset);
+    pdf.setFont('Carlito', 'normal');
+    pdf.text(displayDate(r.reportDate), 76, 120 + offset);
     pdf.addImage(logo, 'JPEG', 335, 30, 237, 78);
     pdf.setDrawColor(41, 68, 124);
     pdf.setLineWidth(3.5);
@@ -79,12 +80,12 @@ export async function generatePDF(r) {
     pdf.setFontSize(10);
   };
 
-  header();
-  const page = () => { pdf.addPage(); header(); y = top; };
+  // Draw all repeating page furniture after pagination is complete.
+  const page = () => { pdf.addPage(); y = top; };
   const room = h => { if (y + h > bottom) page(); };
 
   const paragraph = (value, {bold = false, size = 10} = {}) => {
-    pdf.setFont('NotoSans', bold ? 'bold' : 'normal');
+    pdf.setFont('Carlito', bold ? 'bold' : 'normal');
     pdf.setFontSize(size);
     const lines = pdf.splitTextToSize(clean(value) || ' ', width);
     for (const line of lines) {
@@ -99,7 +100,7 @@ export async function generatePDF(r) {
     room(48);
     y += 8;
     pdf.setTextColor(...blue);
-    paragraph(value, {bold: true, size: 11});
+    paragraph(value, {bold: true, size: 12});
     pdf.setTextColor(0);
   };
 
@@ -117,15 +118,15 @@ export async function generatePDF(r) {
       startY: y,
       head: head ? [head.map(clean)] : [],
       body: body.map(row => row.map(formatCellVal)),
-      margin: {left, right: 36, top, bottom: 54},
+      margin: {left, right: 30, top, bottom: 54},
       theme: 'grid',
       styles: {
-        font: 'NotoSans',
-        fontSize: 9.2,
+        font: 'Carlito',
+        fontSize: 10,
         textColor: 0,
         lineColor: [75, 75, 75],
         lineWidth: 0.5,
-        cellPadding: 3.5,
+        cellPadding: 1.5,
         overflow: 'linebreak',
         valign: 'middle'
       },
@@ -138,9 +139,7 @@ export async function generatePDF(r) {
         lineWidth: 0.5
       },
       rowPageBreak: 'avoid',
-      didDrawPage: () => {
-        if (pdf.internal.getCurrentPageInfo().pageNumber > 1) header();
-      },
+
       ...opts
     });
     y = pdf.lastAutoTable.finalY + 5;
@@ -159,7 +158,7 @@ export async function generatePDF(r) {
       [displayDate(r.inspectionDate), true],
       [' and scope of services as described below.', false]
     ]) {
-      pdf.setFont('NotoSans', isBold ? 'bold' : 'normal');
+      pdf.setFont('Carlito', isBold ? 'bold' : 'normal');
       for (const word of clean(value).split(/(?<=\s)/)) {
         const w = pdf.getTextWidth(word);
         if (x + w > left + width && x > left) {
@@ -175,15 +174,15 @@ export async function generatePDF(r) {
   };
 
   // General Info Table
-  table(null, generalRows(r), {columnStyles: {0: {fontStyle: 'bold', cellWidth: 155}}});
+  table(null, generalRows(r), {styles:{font:'Carlito',fontSize:11,cellPadding:{top:.65,bottom:.65,left:5,right:5},textColor:0,lineColor:[95,95,95],lineWidth:.5,valign:'top'},columnStyles: {0: {fontStyle: 'bold', cellWidth: 156}}});
   richIntro();
 
   // 1.0 Stage of Inspection
   heading('1.0 Stage of Inspection:');
   room(26);
-  pdf.setFont('NotoSans', 'normal');
+  pdf.setFont('Carlito', 'normal');
   stages.forEach((s, i) => {
-    const x = left + i * 135;
+    const x = left + i * 137;
     pdf.setDrawColor(0);
     pdf.setLineWidth(0.6);
     pdf.rect(x, y + 2, 9, 9);
@@ -191,7 +190,7 @@ export async function generatePDF(r) {
       pdf.line(x, y + 2, x + 9, y + 11);
       pdf.line(x + 9, y + 2, x, y + 11);
     }
-    pdf.setFontSize(9);
+    pdf.setFontSize(10);
     pdf.text(s, x + 13, y + 10);
   });
   y += 20;
@@ -201,7 +200,7 @@ export async function generatePDF(r) {
   table(
     ['PO. Sr. No. / Item No.', 'Item Description', 'P.O. Qty. (UOM)', 'Offered Qty. (UOM)', 'Inspected Qty. (UOM)'],
     r.equipment.map(x => columns.equipment.map(([k]) => x[k])),
-    {columnStyles: {0: {cellWidth: 55, halign: 'center'}, 1: {cellWidth: 270}, 2: {halign: 'center'}, 3: {halign: 'center'}, 4: {halign: 'center'}}}
+    {columnStyles: {0: {cellWidth: 58, halign: 'center'}, 1: {cellWidth: 270}, 2: {cellWidth:72,halign: 'center'}, 3: {cellWidth:73,halign: 'center'}, 4: {cellWidth:73,halign: 'center'}}}
   );
 
   // 3.0 Reference Documents (unified table with Reference Standards top row)
@@ -215,10 +214,11 @@ export async function generatePDF(r) {
         content: clean(f === 'date' ? displayDate(x[k]) : x[k]),
         styles: {halign: 'center', fontStyle: isCapsText(x[k]) ? 'bold' : 'normal'}
       })))
-    ]
+    ],{columnStyles:{0:{cellWidth:178},1:{cellWidth:140},2:{cellWidth:42},3:{cellWidth:64},4:{cellWidth:122}}}
   );
 
   // 4.0 Inspection Activities as per ITP/QAP/MQP
+  room(Math.min(bottom-top,85+(r.activities.length+2)*14));
   heading('4.0 Inspection Activities as per ITP/QAP/MQP:');
   const activities = [];
   if (r.activityGroup || r.activityGroupCode) {
@@ -242,16 +242,16 @@ export async function generatePDF(r) {
   table(
     ['ITP/QAP Clause No.', 'Activity Description', 'Quantum of Check', 'Scope of Inspection (R/W/RW/V/H)'],
     activities,
-    {columnStyles: {0: {cellWidth: 68}, 1: {cellWidth: 282}}}
+    {columnStyles: {0: {cellWidth: 63}, 1: {cellWidth: 312},2:{cellWidth:86},3:{cellWidth:85}}}
   );
 
   // Flow text a line at a time. Each page closes its own border before a
   // continuation begins, so long QAP text cannot cross the footer or header.
-  function wrapSpans(spans,firstIndent=8,continuationIndent=8,size=9.5){
+  function wrapSpans(spans,firstIndent=8,continuationIndent=8,size=10){
     const lines=[];let pieces=[],used=0,indent=firstIndent;
     const commit=()=>{lines.push({pieces,indent});pieces=[];used=0;indent=continuationIndent;};
     for(const span of spans){
-      pdf.setFont('NotoSans',span.bold?'bold':'normal');pdf.setFontSize(size);
+      pdf.setFont('Carlito',span.bold?'bold':'normal');pdf.setFontSize(size);
       for(const token of clean(span.text).split(/(\s+)/).filter(Boolean)){
         let text=token;
         if(!used&&/^\s+$/.test(text))continue;
@@ -261,7 +261,7 @@ export async function generatePDF(r) {
     }
     if(pieces.length||!lines.length)commit();return lines;
   }
-  function boxedBlocks(blocks,size=9.5){
+  function boxedBlocks(blocks,size=10){
     room(35);let boxTop=y;y+=5;
     const close=()=>{pdf.setDrawColor(75,75,75);pdf.setLineWidth(.5);pdf.rect(left,boxTop,width,Math.max(12,y-boxTop+4));};
     const nextLine=height=>{if(y+height>bottom-5){close();page();boxTop=y;y+=5;}};
@@ -269,10 +269,10 @@ export async function generatePDF(r) {
       if(block.space){nextLine(block.space);y+=block.space;continue;}
       const lines=wrapSpans(block.spans,block.firstIndent??8,block.indent??8,size);
       for(const [i,line] of lines.entries()){
-        nextLine(13);let x=left+line.indent;
+        nextLine(14);let x=left+line.indent;
         if(block.bullet&&i===0){pdf.setFillColor(0);pdf.triangle(left+12,y+3,left+18,y+6,left+12,y+9,'F');}
-        for(const piece of line.pieces){pdf.setTextColor(0);pdf.setFont('NotoSans',piece.bold?'bold':'normal');pdf.setFontSize(size);pdf.text(piece.text,x,y+10);const w=pdf.getTextWidth(piece.text);if(piece.underline){pdf.setDrawColor(0);pdf.setLineWidth(.4);pdf.line(x,y+12,x+w,y+12);}x+=w;}
-        y+=13;
+        for(const piece of line.pieces){pdf.setTextColor(0);pdf.setFont('Carlito',piece.bold?'bold':'normal');pdf.setFontSize(size);pdf.text(piece.text,x,y+10);const w=pdf.getTextWidth(piece.text);if(piece.underline){pdf.setDrawColor(0);pdf.setLineWidth(.4);pdf.line(x,y+12,x+w,y+12);}x+=w;}
+        y+=14;
       }
       y+=block.after??2;
     }
@@ -284,7 +284,7 @@ export async function generatePDF(r) {
     if(/^[➢•]/.test(line))return {bullet:true,firstIndent:25,indent:25,spans:[{text:line.replace(/^[➢•]\s*/,''),bold:false}]};
     if(/^Core Coil Assembly$/i.test(line.trim()))return {spans:[{text:line,bold:true,underline:true}]};
     const qap=line.match(/^(As per QAP[^:]*:)(.*)$/i);
-    return qap?{firstIndent:8,indent:104,spans:[{text:qap[1],bold:true},{text:qap[2]}]}:{spans:[{text:line,bold:isCapsText(line)}]};
+    return qap?{firstIndent:14,indent:120,spans:[{text:qap[1],bold:true},{text:qap[2]}]}:{firstIndent:/^were verified/i.test(line)?120:8,indent:/^were verified/i.test(line)?120:8,spans:[{text:line,bold:isCapsText(line)}]};
   });
   boxedBlocks(activityBlocks);
 
@@ -315,25 +315,26 @@ export async function generatePDF(r) {
   boxedBlocks([{spans:[{text:'Enclosure:',bold:true}]},...clean(r.enclosures).split('\n').filter(Boolean).map(text=>({bullet:true,firstIndent:25,indent:25,spans:[{text:text.replace(/^[•➢-]\s*/,''),bold:isCapsText(text)}]}))]);
 
   // 7.0 Inspection Photographs (2-column bordered table grid)
+  room(r.photos.length?220:48);
   heading('7.0 Inspection Photographs:');
   if (!r.photos.length) {
     paragraph('No photographs attached.');
   }
   for(let i=0;i<r.photos.length;i+=2){
-    const pair=[r.photos[i],r.photos[i+1]];pdf.setFont('NotoSans','bold');pdf.setFontSize(9.5);
-    const captions=pair.map(p=>p?pdf.splitTextToSize(clean(p.caption),252):[]);
-    const imageHeight=190,lines=Math.max(1,...captions.map(c=>c.length));
+    const pair=[r.photos[i],r.photos[i+1]];pdf.setFont('Carlito','bold');pdf.setFontSize(9.5);
+    const captions=pair.map(p=>p?pdf.splitTextToSize(clean(p.caption),257):[]);
+    const imageHeight=165,lines=Math.max(1,...captions.map(c=>c.length));
     room(imageHeight+Math.min(lines*13+10,100));const imageY=y;
     for(let j=0;j<2;j++){
-      const x=left+j*270;pdf.setDrawColor(75,75,75);pdf.setLineWidth(.5);pdf.rect(x,imageY,270,imageHeight);
-      if(pair[j]){const props=pdf.getImageProperties(pair[j].data);const scale=Math.min(254/props.width,182/props.height);pdf.addImage(pair[j].data,props.fileType,x+(270-props.width*scale)/2,imageY+(imageHeight-props.height*scale)/2,props.width*scale,props.height*scale);}
+      const x=left+j*273;pdf.setDrawColor(75,75,75);pdf.setLineWidth(.5);pdf.rect(x,imageY,273,imageHeight);
+      if(pair[j]){const props=pdf.getImageProperties(pair[j].data);const scale=Math.min(257/props.width,161/props.height);pdf.addImage(pair[j].data,props.fileType,x+(273-props.width*scale)/2,imageY+(imageHeight-props.height*scale)/2,props.width*scale,props.height*scale);}
     }
     y+=imageHeight;let captionTop=y;y+=3;
-    const closeCaption=()=>{pdf.setDrawColor(75,75,75);pdf.setLineWidth(.5);for(let j=0;j<2;j++)pdf.rect(left+j*270,captionTop,270,y-captionTop+3);};
+    const closeCaption=()=>{pdf.setDrawColor(75,75,75);pdf.setLineWidth(.5);for(let j=0;j<2;j++)pdf.rect(left+j*273,captionTop,273,y-captionTop+3);};
     for(let k=0;k<lines;k++){
-      if(y+13>bottom-4){closeCaption();page();captionTop=y;y+=3;}
-      pdf.setFont('NotoSans','bold');pdf.setFontSize(9.5);pdf.setTextColor(0);
-      captions.forEach((c,j)=>{if(c[k])pdf.text(c[k],left+j*270+135,y+10,{align:'center'});});y+=13;
+      if(y+14>bottom-4){closeCaption();page();captionTop=y;y+=3;}
+      pdf.setFont('Carlito','bold');pdf.setFontSize(9.5);pdf.setTextColor(0);
+      captions.forEach((c,j)=>{if(c[k])pdf.text(c[k],left+j*273+136.5,y+10,{align:'center'});});y+=14;
     }
     closeCaption();y+=3;
   }
@@ -355,23 +356,24 @@ export async function generatePDF(r) {
   );
 
   // Adaptive cells retain full names, even when they need multiple lines.
-  room(125);y+=6;
-  const signatureHeight=68;
+  room(108);y+=6;
+  const signatureHeight=64;
   table(null,[
     [{content:'Inspected By:',colSpan:4,styles:{fontStyle:'bold',halign:'center'}},{content:'Reviewed By:',colSpan:4,styles:{fontStyle:'bold',halign:'center'}}],
     [{content:'',colSpan:4,styles:{minCellHeight:signatureHeight}},{content:'',colSpan:4,styles:{minCellHeight:signatureHeight}}],
     ['Name:',r.inspector,'Date:',displayDate(r.inspectorDate),'Name:',r.reviewer,'Date:',displayDate(r.reviewerDate)]
   ],{
-    columnStyles:{0:{cellWidth:42,fontStyle:'bold'},1:{cellWidth:128},2:{cellWidth:36,fontStyle:'bold'},3:{cellWidth:64},4:{cellWidth:42,fontStyle:'bold'},5:{cellWidth:128},6:{cellWidth:36,fontStyle:'bold'},7:{cellWidth:64}},
+    columnStyles:{0:{cellWidth:42,fontStyle:'bold'},1:{cellWidth:131},2:{cellWidth:36,fontStyle:'bold'},3:{cellWidth:64},4:{cellWidth:42,fontStyle:'bold'},5:{cellWidth:131},6:{cellWidth:36,fontStyle:'bold'},7:{cellWidth:64}},
     didDrawCell:data=>{if(data.row.index!==1||data.section!=='body')return;const signature=data.column.index===0?r.inspectorSignature:data.column.index===4?r.reviewerSignature:'';if(signature){const props=pdf.getImageProperties(signature);const scale=Math.min(170/props.width,55/props.height);pdf.addImage(signature,props.fileType,data.cell.x+(data.cell.width-props.width*scale)/2,data.cell.y+(data.cell.height-props.height*scale)/2,props.width*scale,props.height*scale);}}
   });
-  room(28);y+=12;pdf.setFont('NotoSans','bold');pdf.setFontSize(10);pdf.text('--- End of Report ---',306,y+6,{align:'center'});
+  room(28);y+=12;pdf.setFont('Carlito','bold');pdf.setFontSize(10);pdf.text('--- End of Report ---',306,y+6,{align:'center'});
 
   const total = pdf.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     pdf.setPage(i);
+    header();
     pdf.setFontSize(8.5);
-    pdf.setFont('NotoSans', 'normal');
+    pdf.setFont('Carlito', 'normal');
     pdf.setTextColor(...navy);
     pdf.text(`Page ${i} of ${total}`, 42, 756);
     pdf.text('Doc. No: AESPL/IR/01 Rev.00;', 570, 756, {align: 'right'});

@@ -36,7 +36,7 @@ Existing IndexedDB reports are copied into SQL when opening the upgraded portal 
 
 ## Dashboard and workflow
 
-The dashboard has three buttons: Completed (marked ready), Draft (required details filled and awaiting final review), and Remaining (required details still missing). Their counts come from SQL and each button filters the report list.
+The dashboard has three buttons: Completed (marked ready), Draft (required details filled and awaiting final review), and Remaining (required details still missing). Their counts come from SQL and each button filters the report list. Search scope, query, status and reset share one row; secondary filters open from Filters and show an active count. The form uses compact metadata rows, aligned labels and readable writing controls.
 
 Reports use one continuous form with seven section anchors. The selected section follows scrolling. The icon-only control sits on the sidebar edge, appears when hovering the sidebar or left screen edge, and changes direction with its state. Keyboard focus reveals it and Ctrl+B toggles it. Section links retain their positions while its panel opens/closes. The company logo returns to the report list. Inputs use large type; repeatable entries have individual labels and plus buttons.
 
@@ -83,4 +83,4 @@ Browser tests use isolated in-memory SQL databases. API tests check disk persist
 - `src/word.js`, `src/pdf.js`: AES report exports.
 - `worker/index.js`, `scripts/build.mjs`: hosted adapter and artifact packaging.
 
-Word fills the cleaned original template and preserves section 5.0 XML. Direct PDF export recreates the layout and may paginate differently from Microsoft Word. Use Word's Save as PDF for Word's exact rendering. Original source documents in the parent workspace are unchanged.
+Word fills the cleaned original template and preserves section 5.0 XML. Direct PDF export follows the supplied reference's Letter page geometry, section order, tables, two-column photographs and sign-off. Repeating headers are drawn after pagination so table continuations retain branding. The bundled OFL-licensed Carlito font approximates the reference's Aptos typography; it is not an exact Microsoft Word rendering. The reference-data fixture has four pages, while added rows and long captions can require more. Original source documents in the parent workspace are unchanged.

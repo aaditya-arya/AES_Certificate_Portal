@@ -2,6 +2,7 @@ import './styles.css';
 import './accessibility.css';
 import './workspace.css';
 import './node-ui.css';
+import './refined-ui.css';
 import {newReport,blankRow,sections,issues,narrative,location,parseDateToIso,displayDate,isCapsText,searchReportFields,defaultActivityDetails,hydrateReport,hasReportContent} from './model.js';
 import {loadSampleReport} from './sample-data.js';
 import {listReports,dashboard,readReport,saveReport,deleteReport,migrateBrowserReports} from './api-client.js';
@@ -41,6 +42,7 @@ function updateSection(){scrollFrame=0;if(!state.report)return;const margin=offs
 function scheduleScroll(){if(!scrollFrame)scrollFrame=requestAnimationFrame(updateSection);}
 function jump(index){if(state.mobile)closeSidebar();const heading=document.getElementById(`report-section-heading-${index}`);heading?.focus({preventScroll:true});heading?.closest('[data-report-section]').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});}
 async function refreshLibrary(){
+ const count=$('#advanced-filter-count');if(count){const active=['accreditation','stage','dateFrom','dateTo'].filter(key=>state.filters[key]).length;count.textContent=active;count.hidden=!active;}
  const sequence=++refreshSequence;$('#report-count').textContent='Loading reports…';
  try{const [list,counts]=await Promise.all([listReports(state.filters),dashboard()]);if(sequence!==refreshSequence||state.report)return;state.items=list.data;state.meta=list.meta;$('#list-results').innerHTML=reportRows(list.data,list.meta);$('#report-count').textContent=`${list.meta.total} reports`;for(const key of ['completed','draft','remaining']){document.getElementById(`count-${key}`).textContent=counts[key];document.querySelector(`.dashboard-stat.${key}`).setAttribute('aria-pressed',String(state.filters.workflow===key));}showError('');}catch(error){showError(error.message);$('#report-count').textContent='Could not load reports';}
 }
@@ -94,9 +96,11 @@ function validateDate(input){const value=valueAt(state.report,input.dataset.path
 document.addEventListener('focusout',event=>{if(event.target.dataset.date&&state.report)validateDate(event.target);});
 document.addEventListener('scroll',event=>{if(event.target.tagName==='TEXTAREA'){const mirror=event.target.closest('.report-textarea')?.querySelector('.textarea-mirror');if(mirror){mirror.scrollTop=event.target.scrollTop;mirror.scrollLeft=event.target.scrollLeft;}}},true);
 document.addEventListener('click',async event=>{
+ const filterPanel=$('.advanced-filters[open]');if(filterPanel&&!filterPanel.contains(event.target))filterPanel.open=false;
  const result=event.target.closest('[data-dialog-result]');if(result){finishDialog(result.dataset.dialogResult);return;}
  const control=event.target.closest('[data-action]');if(!control||control.disabled)return;event.preventDefault();const {action,id,type,key}=control.dataset;
  try{
+  if(action==='close-filters'){$('.advanced-filters').open=false;$('.advanced-filters summary').focus();return;}
   if(action==='sidebar'){toggleSidebar();return;}if(action==='close-sidebar'){closeSidebar();return;}if(action==='dismiss-toast'){$('#toast')?.remove();return;}if(action==='jump-section'){jump(Number(control.dataset.section));return;}
   if(action==='reload-report'){if(await dialog('Reload saved report?','<p class="modal-copy">This replaces your unsaved entries with the latest database version. Download Word or PDF first if you need to keep your current edits.</p>',[['close','Keep editing'],['reload','Reload saved version','primary']])!=='reload')return;clearTimeout(saveTimer);await open(await readReport(state.report.id));setSave('saved');return;}
   if(action==='library'){await leave();return;}if(action==='create'){await open(newReport());changed();return;}if(action==='edit-report'){setBusy(true);try{await open(await readReport(id));setSave('saved');}finally{setBusy(false);}return;}
@@ -122,6 +126,7 @@ document.addEventListener('click',async event=>{
 });
 window.addEventListener('keydown',event=>{
  if($('#app-dialog'))return;
+ if(event.key==='Escape'&&$('.advanced-filters[open]')){$('.advanced-filters').open=false;$('.advanced-filters summary').focus();return;}
  if(event.ctrlKey&&!event.altKey&&!event.metaKey&&event.key.toLowerCase()==='b'){event.preventDefault();if(!event.repeat)toggleSidebar();return;}
  if(state.mobile&&small()){if(event.key==='Escape'){event.preventDefault();closeSidebar();}else containTab(event,$('#report-sidebar'));}
 });
