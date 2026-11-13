@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import {newReport} from '../src/model.js';
 
 // Credentials are supplied through hidden stdin and never persisted.
+if(process.stdin.isTTY)process.stdin.setRawMode(true);
 console.log('Ready for hosted verification JSON on stdin (input is hidden).');
 const terminal=createInterface({input:process.stdin,terminal:false});
 const input=await new Promise(resolve=>terminal.once('line',resolve));terminal.close();
+if(process.stdin.isTTY)process.stdin.setRawMode(false);
 const {url,token}=JSON.parse(input),origin=new URL(url).origin;
 const call=(path,options={})=>fetch(`${origin}/api/v1${path}`,{...options,redirect:'error',headers:{'OAI-Sites-Authorization':`Bearer ${token}`,...options.headers}});
 const report=newReport();report.reportNo=`DEPLOY-CHECK-${crypto.randomUUID()}`;report.client='Temporary deployment verification';
