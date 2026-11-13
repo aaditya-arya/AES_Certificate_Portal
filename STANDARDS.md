@@ -45,7 +45,7 @@ Widths tested: **320, 375, 390, 640, 768, 820, 1024, 1440, and 1920 CSS pixels**
 
 The workflow test covers typed/calendar dates, invalid date rejection, uppercase live formatting, all-field search and focus, continuous scrolling and active-section tracking, row/photo removal confirmations, failed-save protection, Word/PDF downloads, PDF preview, persistence, absence of backup/restore controls, and marking ready without section-completion gates. The default section 5.0 Word XML remains unchanged from the template.
 
-Additional release checks: ten model tests, production build, dependency audit, production preview/export smoke check, and Git whitespace checks. Generated reports and browser test artifacts stay in the ignored `test-results/` directory and are not part of the source push.
+Additional release checks: twelve model tests, production build, dependency audit, production preview/export smoke check, and Git whitespace checks. Generated reports and browser test artifacts stay in the ignored `test-results/` directory and are not part of the source push.
 
 Automated checks and the documented keyboard flows are the scope of this verification, not a formal WCAG certification or exhaustive assistive-technology audit. The browser's built-in PDF viewer and exported PDFs are not covered by the web UI's axe result. See [VERIFICATION.md](VERIFICATION.md) for export fidelity and storage limits.
 
@@ -78,3 +78,9 @@ Set `AES_TEST_URL` to change the origin. Set `CI=true` to use Playwright's bundl
 ## Sample-fill verification
 
 The sample-fill suite covers filling a blank form, creating a sample from the report list, all seven sections and eight photographs, canceling and confirming replacement, preserving the original through Create separate sample, Word/PDF export, save/reopen, failed table/photo loading, and edits made during loading. It checks the replacement dialog and filled form with axe, and reflow at 320, 390, 768 and 1440 px. Run `npm run test:sample` with the same browser and URL environment variables above.
+
+## Stable rail and random extended-row samples
+
+The editor rail keeps the same coordinates in its open and collapsed states. A dedicated browser check compares all seven button rectangles and the form rectangle through pointer and Ctrl+B toggles at 1440x900, 1024x768 and 900x640. It also checks mobile drawer navigation and accessibility in both desktop states.
+
+Random sample tests exercise extra equipment, document, activity, calibration, expense and attendee rows added through the UI. Existing counts and row IDs are retained, every row cell is populated, repeated fills generate fresh values, and extended rows are included in exported Word and PDF files. Model tests additionally check larger row counts, date ordering, quantities, original section 5.0 content and preservation of uploaded images. Run `node tests/sidebar-random-browser.mjs` with the standard browser/URL variables to reproduce.

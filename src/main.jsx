@@ -14,9 +14,10 @@ import {
   locationOrganization, requester, displayDate, endDateDisplay, accreditationType,
   parseDateToIso, isCapsText, defaultActivityDetails, defaultConclusion,
   defaultPending, defaultIdentification, defaultNonconformities, defaultEnclosures,
-  po, issues, calibrationRemark, uid, filterReports, loadSampleReport, hasReportContent,
+  po, issues, calibrationRemark, uid, filterReports, hasReportContent,
   hydrateReport, searchReportFields, sectionForField, activityDetailsText, fieldCatalog, searchableFields
 } from './model';
+import {loadSampleReport} from './sample-data';
 import {readReports, saveReports, download, imageFile} from './storage';
 import {DateInput, ReportTextarea, ReportDetailRow} from './form-controls';
 import './styles.css';
@@ -462,19 +463,19 @@ function App() {
     });
   };
 
-  const fillSample=async(targetId=null)=>{
+  const fillSample=async(targetId=null,layout=null)=>{
     if(busy)return;
     const startingTarget=latest.current.find(report=>report.id===targetId);
     setBusy('sample');
     try{
-      const sample=await loadSampleReport();
+      const sample=await loadSampleReport(startingTarget||layout);
       const target=latest.current.find(report=>report.id===targetId);
       if(target&&target!==startingTarget){alert('Your report changed while sample data was loading. Click Fill sample report again to review replacing it.');return;}
       const filled=target?{...sample,id:target.id,createdAt:target.createdAt,updatedAt:new Date().toISOString()}:sample;
       setReports(previous=>target?previous.map(report=>report.id===target.id?filled:report):[filled,...previous]);
       open(filled);
       setDirty(true);setSaveState('saving');
-      alert('Sample report filled. All sections and example photographs are ready to test.');
+      alert('Sample report filled. Fresh sample values are ready, including every row you added.');
     }catch(error){alert(error.message||'Could not fill the sample report. Please try again.');}
     finally{setBusy('');}
   };
@@ -1319,8 +1320,8 @@ function App() {
       )}
 
       {modal?.type==='fill-sample'&&<Modal title="Replace this report with sample data?" onClose={()=>setModal(null)}>
-        <p className="modal-copy">This replaces the fields, rows, photographs and signatures in this report with sample data for testing. Create a separate sample to keep this report.</p>
-        <div className="modal-actions"><Button onClick={()=>setModal(null)}>Keep my report</Button><Button icon={Plus} onClick={()=>{setModal(null);fillSample();}}>Create separate sample</Button><Button className="primary" onClick={()=>{const id=modal.id;setModal(null);fillSample(id);}}>Replace with sample data</Button></div>
+        <p className="modal-copy">This fills every existing row with fresh sample values and replaces the report fields and signature images. Your row counts and uploaded photographs stay in place; their descriptions are filled too. Create a separate sample to keep the original report.</p>
+        <div className="modal-actions"><Button onClick={()=>setModal(null)}>Keep my report</Button><Button icon={Plus} onClick={()=>{const layout=latest.current.find(report=>report.id===modal.id);setModal(null);fillSample(null,layout);}}>Create separate sample</Button><Button className="primary" onClick={()=>{const id=modal.id;setModal(null);fillSample(id);}}>Replace with sample data</Button></div>
       </Modal>}
 
       {modal?.type==='leave-warning'&&<Modal title="Leave this report?" onClose={()=>setModal(null)}>

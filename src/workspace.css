@@ -166,3 +166,23 @@ html{scroll-padding-top:var(--section-offset,180px)}
 .form-utility-bar .form-search-box{flex:1;min-width:0}
 .sample-fill-button{flex-shrink:0;min-height:54px}
 @media(max-width:820px){.form-utility-bar:has(.sample-fill-button){align-items:stretch;flex-direction:column}.sample-fill-button{width:100%}}
+
+/* The report rail keeps one geometry while its workspace panel opens or closes. */
+@media(min-width:821px){
+  .editor-open{--report-rail-width:248px}
+  .editor-open .sidebar,.editor-open.sidebar-collapsed .sidebar{width:var(--report-rail-width);padding:20px 12px 24px;transform:none;transition:none}
+  .editor-open .main-shell,.editor-open.sidebar-collapsed .main-shell{margin-left:var(--report-rail-width);transition:none}
+  .editor-open .sidebar>.sidebar-label,.editor-open .sidebar>.nav-item,.editor-open .sidebar>.sidebar-divider,.editor-open .sidebar>.sidebar-report,.editor-open .sidebar-bottom{display:none}
+  .editor-open .sidebar .sidebar-top-row{display:flex;padding:0 8px;max-height:90px;opacity:1;visibility:visible;transform:none;transition:opacity .2s ease,transform .25s ease,visibility .2s}
+  .editor-open.sidebar-collapsed .sidebar .sidebar-top-row{display:flex;opacity:0;visibility:hidden;transform:translateX(-16px);pointer-events:none}
+  .editor-open .sidebar .brand img{width:200px;height:66px}
+  .editor-open .sidebar .steps,.editor-open.sidebar-collapsed .sidebar .steps{position:absolute;top:128px;left:12px;right:12px;bottom:24px;display:flex;flex-direction:column;gap:6px;margin:0;padding:3px 4px;overflow-y:auto;overflow-x:hidden;scroll-padding:8px;scrollbar-width:thin}
+  .editor-open .sidebar .step,.editor-open.sidebar-collapsed .sidebar .step{position:relative;flex:none;display:flex;align-items:center;gap:10px;height:64px;min-height:64px;margin:0;padding:10px 24px 10px 9px;font-size:15px;line-height:1.45;border-radius:8px;box-sizing:border-box}
+  .editor-open .sidebar .step>span:nth-child(2){font-size:inherit;line-height:inherit}
+  .editor-open .sidebar .step>svg,.editor-open.sidebar-collapsed .sidebar .step>svg{position:absolute;right:7px;display:block;width:14px;height:14px}
+  .editor-open .sidebar .step-circle{height:30px;width:30px;font-size:12px}
+}
+@media(min-width:821px) and (max-height:740px){
+  .editor-open .sidebar .steps,.editor-open.sidebar-collapsed .sidebar .steps{top:108px;bottom:16px;gap:5px}
+  .editor-open .sidebar .step,.editor-open.sidebar-collapsed .sidebar .step{height:56px;min-height:56px;padding-top:7px;padding-bottom:7px}
+}

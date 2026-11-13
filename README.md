@@ -15,7 +15,9 @@ Open the Local URL printed by Vite. For production, run `npm run build` and serv
 
 ## Report workflow
 
-For a quick test, click **Create sample report** in the report list, or **Fill sample report** beside the field search inside a report. This populates all sections with sample values, current visit/sign-off dates, table rows and eight reference photographs. Report numbers start with `SAMPLE/AES/`. Signature images stay empty so you can test uploading your own.
+For a quick test, click **Create sample report** in the report list, or **Fill sample report** beside the field search inside a report. This populates all sections with fresh randomized values, consistent visit/sign-off dates, table rows and reference photographs. Report numbers start with `SAMPLE/AES/`. Signature images stay empty so you can test uploading your own.
+
+Every click creates a new fictional inspection scenario. Dates and calibration validity stay consistent, and ordered quantities stay greater than or equal to offered and inspected quantities. Existing row counts and row IDs are retained, including rows added with the plus buttons. Existing uploaded photographs are retained with new sample captions; otherwise eight reference photographs are used. Section 5.0 stays in its original format.
 
 Existing entries require confirmation before replacement. Choose **Create separate sample** to keep the original report. Samples remain editable drafts and support Word/PDF export. A failed load, or an edit made while loading, leaves the existing report intact.
 
@@ -25,7 +27,7 @@ Existing entries require confirmation before replacement. Choose **Create separa
 
 The editor uses 18 px input text, clear labels and large controls. Repeatable entries appear as numbered cards with their own labels, descriptions and plus buttons. The report library has selected-field search, accreditation, stage, status and inspection-date filters arranged in two rows on desktop. Smaller layouts wrap the controls for readability. Each report has Edit, Word and PDF actions; duplication and deletion are under More.
 
-Opening a report automatically collapses the workspace sidebar. Its panel slides away while all seven section links remain on the page background. The icon-only sidebar control expands or collapses it, with a hover hint and **Ctrl+B** shortcut that also works while typing. On phones, a sticky strip of seven section buttons supplements the navigation drawer.
+Opening a report automatically collapses the workspace sidebar. Its panel slides away while all seven section links remain on the page background. In the editor, the seven links and form keep the same position and width in both sidebar states, avoiding jumps during toggles. The icon-only sidebar control expands or collapses it, with a hover hint and **Ctrl+B** shortcut that also works while typing. On phones, a sticky strip of seven section buttons supplements the navigation drawer.
 
 All seven sections stay mounted on a single scrollable page. Section links scroll to their headings, and the highlighted link follows normal scrolling. There are no page switches, progress bars or section-completion buttons. The review checks required fields directly before the report can be marked ready. Form search finds field names, guidance and entered values across every section and focuses the matching field.
 
@@ -74,6 +76,7 @@ The integration script checks typed and calendar dates, invalid dates, live uppe
 
 ## Source layout
 
+- `src/sample-data.js`: randomized sample scenarios that preserve extended rows and enforce coherent dates and quantities.
 - `src/model.js`: field schema, linked values, validation, reference example and validation.
 - `src/form-controls.jsx`: accessible typed/calendar dates, multiline live bold rendering, and report-detail rows.
 - `src/accessibility.css`: contrast, focus, control boundaries, reflow and reduced-height adjustments.
