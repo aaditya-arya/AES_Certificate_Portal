@@ -1,6 +1,7 @@
 import {ApiError,fail,normalizeReport,validId} from './validation.js';
 import {repository} from './repository.js';
 import {getOpenapi} from './openapi.js';
+import {handleDocuments} from './documents.js';
 const json=(data,status=200,headers={})=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...headers}});
 const expected=request=>{const raw=request.headers.get('If-Match');if(!raw)fail(428,'VERSION_REQUIRED','Send If-Match with the report version.');const match=/^(?:"(\d+)"|(\d+))$/.exec(raw);if(!match)fail(400,'INVALID_VERSION','If-Match must contain a numeric version.');return Number(match[1]||match[2]);};
 async function body(request){
@@ -22,6 +23,7 @@ export async function handleApi(request,db,{bucket=null,apiKey='',allowedOrigins
    if(request.headers.get('authorization')!==`Bearer ${apiKey}`)fail(401,'UNAUTHORIZED','A valid Bearer API key is required.');
    path=path.replace('/api/v1/integration/','/api/v1/');
   }
+  const documentResponse=await handleDocuments({request,path,db,bucket,cors,json,expected,body});if(documentResponse)return documentResponse;
   const store=repository(db,bucket),method=request.method;
   if(path==='/api/v1/health'&&method==='GET'){await db.get('SELECT 1 AS ok');return json({data:{status:'ok',storage:db.kind||'d1',apiVersion:'1'}},200,cors);}
   if(path==='/api/v1/openapi.json'&&method==='GET')return json(getOpenapi(),200,cors);

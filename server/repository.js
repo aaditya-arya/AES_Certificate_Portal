@@ -44,6 +44,7 @@ export function repository(db,bucket=null){
   return {id,version,workflow:workflow(report),updatedAt:now,createdAt:report.createdAt};
  }
  async function remove(id,version){
+  if((await db.get('SELECT count(*) AS n FROM inspection_documents WHERE report_id=?',[id])).n)throw new ApiError(409,'LINKED_DOCUMENTS','This inspection has linked documents. Remove its draft documents first; issued documents must be retained.');
   const previous=await getRow(id);if(!previous){if(bucket&&await db.get("SELECT sequence FROM report_changes WHERE report_id=? AND operation='deleted' LIMIT 1",[id])){await purgeMedia(id);return;}throw new ApiError(404,'NOT_FOUND','Report not found.');}if(previous.version!==version)throw new ApiError(409,'VERSION_CONFLICT','This report changed elsewhere. Reload it before deleting.');
   const stamp=new Date().toISOString(),sql=[statement('INSERT INTO report_changes(report_id,version,operation,updated_at) SELECT id,version+1,?,? FROM reports WHERE id=? AND version=?',['deleted',stamp,id,version]),statement('DELETE FROM reports WHERE id=? AND version=?',[id,version])];
   if(!bucket)sql.push(statement('DELETE FROM media_blobs WHERE digest NOT IN (SELECT digest FROM report_media)'));

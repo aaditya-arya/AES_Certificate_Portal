@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `documents_number_unique` ON `inspection_documents` (`type`,`number`);

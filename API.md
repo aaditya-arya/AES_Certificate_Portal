@@ -91,3 +91,36 @@ Invoke-RestMethod -Uri "$api/reports/$id/export"
 ```
 
 Errors consistently use `{"error":{"code":"...","message":"...","details":[]}}`, with `details` present when useful.
+
+## Flash, IRC, Punch and NCR API
+
+The OpenAPI schema now includes `InspectionDocument` and the routes below. These also work under `/api/v1/integration/` with the existing Bearer API key rules.
+
+| Route | Behavior |
+|---|---|
+| `GET /documents` | Search by `type=flash|irc|punch|ncr`, `reportId`, `status`, `q`, `dateFrom`, `dateTo`; paginate with `limit` (1–100) and `offset`. |
+| `POST /documents` | Create a draft linked by `reportId` to an existing inspection. |
+| `GET /documents/{id}` | Full document, frozen context, attachment metadata and optimistic version. |
+| `PUT /documents/{id}` | Replace editable fields; requires `If-Match`. Issued/closed documents are locked. |
+| `POST /documents/{id}/transitions` | `{ "action": "issue|revise|cancel-issue|close|reopen", "note": "reason" }`, with `If-Match`. Cancellation and reopening require a reason. |
+| `GET /documents/{id}/history` | Save/transition versions, timestamps and recorded reasons. |
+| `GET /documents/{id}/versions/{version}` | Immutable saved snapshot. |
+| `GET /documents/{id}/files/{fileId}` | Download a current file; add `?version=1` for a historical snapshot's file. |
+| `GET /documents/{id}/export` | Complete JSON including base64 attachment data for another application. |
+| `DELETE /documents/{id}` | Delete a draft, all versions and its files; requires `If-Match`. |
+| `GET /document-changes?after=0` | Cursor-based document events including deletions. Separate from the inspection change feed. |
+
+Common write fields: `id`, `type`, `reportId`, `number`, `date`, `preparedBy`, `reviewedBy`, `items`, `attachments`, plus fields specific to the chosen type. `status` and `revision` are server controlled. Do not send response-only `context`, `version`, `createdAt` or `updatedAt` back in a PUT. The inspection link and type cannot change after creation. Context is refreshed from the inspection on editable saves; past versions retain their original context.
+
+Type-specific fields:
+
+- Flash: `result` (Accepted / Accepted with comments / Rejected), `summary`, `outstanding`, `actionBy`, `referenceDocuments`.
+- IRC: `releaseDecision` (Released / Released with conditions / Not released), `certificateScope`, `releaseRemarks`, `shipmentDetails`, `referenceDocuments`.
+- Punch: `summary`, `owner`, `targetDate`, `closedDate`, `verification`.
+- NCR: `summary`, `referenceDocuments`, `cause`, `correction`, `correctiveAction`, `verification`, `owner`, `targetDate`, `closedDate`.
+
+Item fields: `id`, `tag`, `description`, `quantity`, `inspection`, `result`, `priority` (Low/Normal/High/Critical), `owner`, `dueDate`, `status` (open/closed), `resolution`. Start with one item and extend up to 500. Missing optional text fields default to empty strings.
+
+New attachments use `{ "id": "uuid", "name": "evidence.pdf", "caption": "Description", "data": "data:application/pdf;base64,..." }`. Saved attachments are referenced by their ID and optional caption, without resending `data`. Supported file types are PDF, DOCX, PNG, JPEG and WebP, with signature checks and limits of 5 MB each, 10 files and 20 MB total. Metadata/bytes live in `document_files` locally; hosted binary files use R2. Removing a file from a document leaves it available to earlier versions.
+
+Flash/IRC flow is draft → issued → new draft revision, or cancel-issue back to draft. Punch/NCR flow is draft → open → closed, with a reason required to reopen. Closure requires every item to be closed with a resolution, plus verification, reviewer and closure date. NCR also requires root cause and corrective action. An unconditional IRC release is rejected while open Punch/NCR records exist. Issuing and closing never send data to an external service.

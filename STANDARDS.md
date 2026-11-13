@@ -22,6 +22,8 @@ Development proxy regression tests send actual Origin headers through Vite for b
 
 The UI/PDF revision is covered by `node tests/refined-browser.mjs` in Chrome and Firefox: single-row search, secondary-filter controls, reset/search behavior, mobile filters, responsive form layouts and accessibility scans. It generates reference, randomized and extended-row PDF fixtures. `python scripts/check-pdf.py` (PyMuPDF required) checks the reference's four-page structure, repeated headers/footers, text bounds and end markers. Fonts use bundled Carlito with its SIL OFL license. This approximates Aptos; the PDF is not pixel-identical to the Word renderer.
 
+Linked-document checks: `tests/documents.test.mjs` verifies upgrade from the original SQL schema without losing inspections, concurrent edits, all four module lifecycles, immutable history, attachment access/export/cleanup, linked-inspection deletion protection, release/closure requirements and invalid inputs. The hosted Worker test exercises document routes with D1/R2-compatible bindings. `node tests/documents-browser.mjs` covers all four editors/registers in Chrome and Firefox, inherited inspection fields/items, files, Word/PDF downloads, revision history, closure, related-document shortcuts, cancellation reasons, mobile reflow, accessibility and failed-save/unsaved-change protection. No writes were made to the Samsung reference portal during its review.
+
 ## Reproduce
 
 ```powershell

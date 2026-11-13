@@ -46,6 +46,16 @@ Changes save through the REST API. A failed save keeps the editor open; concurre
 
 ## REST API and integration
 
+Flash reports, inspection release certificates (IRC), Punch lists and non-conformance reports (NCR) have separate searchable registers and continuous forms. Open them from the sidebar, dashboard module buttons, or **Related documents** on an inspection row. That shortcut scopes the register and preselects the inspection for new documents. Inspection details and initial equipment items are inherited from the saved inspection; document content and status are stored independently.
+
+- Flash/IRC: save drafts, issue, cancel an issue with a reason, or create the next draft revision. Issued versions are locked.
+- Punch/NCR: save drafts, open for action, record owners/target dates and item resolutions, then close after entering verification, reviewer and closure date. NCR closure also requires root cause and corrective action. Reopening requires a reason.
+- An unconditional IRC release is blocked while the inspection has open Punch/NCR records. A conditional release requires written conditions.
+- Attach PDFs, Word documents and photographs with descriptions; download current files or historical versions. Maximum 10 files, 5 MB each, 20 MB total per document. Every save/transition creates an immutable snapshot. Files removed from the current version remain available to previous versions until the entire draft is deleted.
+- Download Word/PDF from the editor or register. Existing AES inspection report exports retain their original template; the new modules use separate AES-branded layouts.
+
+These records use the same `data/aes-portal.sqlite` file locally and the existing D1/R2 bindings when hosted. Tables are `inspection_documents`, `document_files`, `document_versions` and `document_events`. A linked inspection cannot be deleted while it has documents. These modules use explicit **Save** controls and warn before leaving unsaved entries. They are a shared private workspace; prepared/reviewed names are recorded fields, not separate authenticated approval roles. There is no connection to Samsung's database or sign-in system, and no Samsung credentials are stored in the application.
+
 See [API.md](API.md) for routes, JSON examples, authentication and integration guidance. The machine-readable contract is available at `/api/v1/openapi.json`.
 
 The standard API is ready for another application to consume; no app-specific outbound integration is configured. Complete JSON export includes fields, rows, inline image data, the derived opening paragraph/location and version metadata. The change feed includes deletions.
