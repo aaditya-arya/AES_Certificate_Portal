@@ -18,6 +18,8 @@ API tests cover CRUD, SQL file persistence across reopen, ETag/If-Match conflict
 
 The hosted adapter test checks the built frontend, D1 API behavior and R2 image storage through compatible test bindings. Deployment and live API verification are separate release checks.
 
+Development proxy regression tests send actual Origin headers through Vite for both localhost and 127.0.0.1, while verifying unrelated origins remain blocked. `node tests/sidebar-browser.mjs` checks browser saves through that proxy, left-edge hover, icon direction, keyboard controls, stable section positions, logo navigation and mobile scroll restoration in Chrome or Firefox. The hosted verification script also sends the Site's Origin header.
+
 ## Reproduce
 
 ```powershell

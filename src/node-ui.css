@@ -31,3 +31,39 @@
 @media(max-width:1100px){.dashboard-stat{padding:18px;gap:12px}.dashboard-stat-icon{height:40px;width:40px}.dashboard-stat small{font-size:13px}}
 @media(max-width:700px){.dashboard-grid{grid-template-columns:minmax(0,1fr);gap:10px}.dashboard-stat{padding:16px 18px}.dashboard-stat>span:last-child{flex:1;display:grid;grid-template-columns:1fr auto;align-items:center;gap:3px 12px}.dashboard-stat strong{grid-column:2;grid-row:1/3;font-size:28px}.dashboard-stat small{grid-column:1}.pagination-bar{align-items:flex-start;flex-direction:column}.pagination-bar>div{width:100%}.pagination-bar .button{flex:1}.native-modal{padding:22px}.native-modal .modal-heading h2{font-size:21px}.photo-image img{height:220px}}
 @media(prefers-reduced-motion:reduce){.dashboard-stat,.button{transition:none}.save-indicator[data-state=saving] svg{animation:none}}
+
+/* The sidebar owns its control; report section positions stay fixed. */
+.app-shell{--sidebar-control-x:268px}
+.app-shell.sidebar-collapsed{--sidebar-control-x:12px}
+.app-shell.editor-open,.app-shell.editor-open.sidebar-collapsed{--sidebar-control-x:224px}
+.sidebar-edge-trigger{position:fixed;left:0;top:0;bottom:0;width:10px;z-index:45}
+.sidebar-toggle-wrap{position:fixed;left:var(--sidebar-control-x);top:20px;z-index:65;opacity:0;transform:translateX(-6px);transition:left .28s ease,opacity .18s ease,transform .18s ease;pointer-events:none}
+.sidebar-toggle-button{display:flex!important;align-items:center;justify-content:center;width:48px;min-width:48px;height:48px;padding:11px;border:1px solid #9bb0cb;border-radius:12px;background:#fff;color:#214c80;box-shadow:0 3px 12px #183a6020;pointer-events:auto}
+.sidebar-toggle-button svg{width:24px;height:24px;transition:transform .18s ease}
+.sidebar-toggle-button:hover{background:#eaf2fb;color:#123f76;border-color:#214c80}
+.sidebar-toggle-button[data-direction=collapse]:hover svg{transform:translateX(-2px)}
+.sidebar-toggle-button[data-direction=expand]:hover svg{transform:translateX(2px)}
+.sidebar:hover~.sidebar-toggle-wrap,.sidebar:focus-within~.sidebar-toggle-wrap,.sidebar-edge-trigger:hover~.sidebar-toggle-wrap,.sidebar-toggle-wrap:hover,.sidebar-toggle-wrap:focus-within{opacity:1;transform:none;pointer-events:auto}
+.sidebar-toggle-wrap .sidebar-tooltip{left:0;top:calc(100% + 10px)}
+.brand{border-radius:6px;flex-shrink:1;min-width:0}
+.brand img{max-width:100%;object-fit:contain}
+@media(min-width:821px){
+ .app-shell.sidebar-collapsed:not(.editor-open) .breadcrumbs{padding-left:52px}
+ .editor-open .sidebar .sidebar-top-row,.editor-open.sidebar-collapsed .sidebar .sidebar-top-row{opacity:1;visibility:visible;pointer-events:auto;transform:none;padding:0 42px 0 8px}
+ .editor-open .sidebar .brand img{width:160px;height:66px}
+ .editor-open .sidebar::before{transition:transform .28s ease}
+}
+@media(max-width:820px){
+ .app-shell,.app-shell.sidebar-collapsed,.app-shell.editor-open,.app-shell.editor-open.sidebar-collapsed{--sidebar-control-x:14px}
+ .sidebar-toggle-wrap{top:8px;opacity:1;transform:none;pointer-events:auto}
+ .sidebar-toggle-button{width:48px;height:48px;background:#fff}
+ .breadcrumbs{padding-left:56px}
+ .sidebar-edge-trigger{display:none}
+ .sidebar.mobile-open .sidebar-top-row{padding-top:8px}
+ .sidebar.mobile-open .mobile-close{display:flex}
+ .sidebar.mobile-open~.sidebar-toggle-wrap{opacity:0;visibility:hidden;pointer-events:none}
+ .sidebar.mobile-open~.sidebar-toggle-wrap .sidebar-toggle-button{pointer-events:none}
+ .sidebar.mobile-open~.sidebar-toggle-wrap .sidebar-tooltip{left:auto;right:0}
+}
+@media(hover:none){.sidebar-toggle-wrap{opacity:1;transform:none;pointer-events:auto}}
+@media(prefers-reduced-motion:reduce){.sidebar-toggle-wrap,.sidebar-toggle-button svg{transition:none}}

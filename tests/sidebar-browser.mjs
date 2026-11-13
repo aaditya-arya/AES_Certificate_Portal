@@ -1,0 +1,37 @@
+import {once} from 'node:events';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+import {expect} from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import {createServer} from 'vite';
+import {startServer} from '../server/index.js';
+import {launchBrowser,browserName} from './browser-engine.mjs';
+const api=startServer({port:0,database:':memory:'});await once(api.server,'listening');
+const vite=await createServer({server:{host:'127.0.0.1',port:0,proxy:{'/api':{target:`http://127.0.0.1:${api.server.address().port}`,changeOrigin:false}}}});await vite.listen();
+const browser=await launchBrowser(),context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),errors=[];
+page.on('pageerror',error=>errors.push(error.message));
+const control=()=>page.locator('.sidebar-toggle-button');
+const home=()=>page.getByRole('heading',{name:'Inspection reports.',exact:true});
+try{
+ await page.goto(`http://localhost:${vite.httpServer.address().port}`);await home().waitFor();
+ await page.mouse.move(900,500);await expect(page.locator('.sidebar-toggle-wrap')).toHaveCSS('opacity','0');
+ await page.mouse.move(2,50);await expect(page.locator('.sidebar-toggle-wrap')).toHaveCSS('opacity','1');
+ const expandedPath=await control().locator('path').getAttribute('d');await control().click();await expect(control()).toHaveAttribute('aria-expanded','false');
+ assert.notEqual(await control().locator('path').getAttribute('d'),expandedPath);
+ await page.keyboard.press('Control+b');await expect(control()).toHaveAttribute('aria-expanded','true');
+ await page.getByRole('button',{name:'Create report',exact:true}).first().click();
+ await page.getByLabel('Client name',{exact:true}).fill('SAME ORIGIN SAVE');await expect(page.locator('#save-state')).toContainText('Saved to database');
+ await expect(page.getByRole('alert')).toHaveCount(0);
+ const geometry=()=>page.locator('.steps').boundingBox(),before=await geometry();await page.keyboard.press('Control+b');assert.deepEqual(await geometry(),before);
+ await page.getByRole('link',{name:'Akshar Engineering Services',exact:true}).click();await home().waitFor();await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.getByRole('button',{name:'Edit',exact:true}).click();await page.setViewportSize({width:390,height:844});
+ await control().click();await expect(control()).toHaveAttribute('aria-expanded','true');
+ const scan=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze();assert.deepEqual(scan.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);
+ await page.getByRole('link',{name:'Akshar Engineering Services',exact:true}).click();await home().waitFor();
+ await expect(page.locator('.main-shell')).not.toHaveAttribute('inert','');
+ assert.notEqual(await page.locator('body').evaluate(element=>getComputedStyle(element).overflow),'hidden');
+ await page.getByRole('button',{name:'Edit',exact:true}).click();await page.getByLabel('Client name',{exact:true}).fill('MOBILE SAVE');await expect(page.locator('#save-state')).toContainText('Saved to database');
+ await page.keyboard.press('Control+b');await page.keyboard.press('Escape');await expect(control()).toBeFocused();
+ await page.setViewportSize({width:1440,height:1000});await expect(page.locator('.sidebar-toggle-wrap')).toHaveCSS('left','224px');await page.mouse.move(2,50);await expect(page.locator('.sidebar-toggle-wrap')).toHaveCSS('opacity','1');await mkdir('test-results',{recursive:true});await page.screenshot({path:`test-results/${browserName}-sidebar-edge.png`});assert.deepEqual(errors,[]);
+ console.log(`${browserName}: real development proxy saves, edge hover, changing icon, Ctrl+B, stable section rail, desktop/mobile logo navigation and scroll unlock passed.`);
+}finally{await browser.close();await vite.close();await api.close();}

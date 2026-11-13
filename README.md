@@ -38,7 +38,7 @@ Existing IndexedDB reports are copied into SQL when opening the upgraded portal 
 
 The dashboard has three buttons: Completed (marked ready), Draft (required details filled and awaiting final review), and Remaining (required details still missing). Their counts come from SQL and each button filters the report list.
 
-Reports use one continuous form with seven section anchors. The selected section follows scrolling. The icon-only sidebar control supports Ctrl+B and keeps section links in the same place while its panel opens/closes. Inputs use large type; repeatable entries have individual labels and plus buttons.
+Reports use one continuous form with seven section anchors. The selected section follows scrolling. The icon-only control sits on the sidebar edge, appears when hovering the sidebar or left screen edge, and changes direction with its state. Keyboard focus reveals it and Ctrl+B toggles it. Section links retain their positions while its panel opens/closes. The company logo returns to the report list. Inputs use large type; repeatable entries have individual labels and plus buttons.
 
 Create sample report or Fill sample report generates realistic random values, preserves extended row counts and uploaded photographs, and retains the original section 5.0. Existing entries require confirmation before replacement. A separate sample preserves the original report.
 
