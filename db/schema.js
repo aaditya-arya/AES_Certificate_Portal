@@ -34,3 +34,12 @@ export const documentEvents=sqliteTable('document_events',{
 });
 export const numberCounters=sqliteTable('number_counters',{scope:text('scope').primaryKey(),value:integer('value').notNull()});
 export const numberAllocations=sqliteTable('number_allocations',{owner:text('owner').primaryKey(),scope:text('scope').notNull(),sequence:integer('sequence').notNull(),reference:text('reference').notNull()},table=>[uniqueIndex('number_reference_unique').on(table.reference)]);
+export const dossiers=sqliteTable('inspection_dossiers',{
+ reportId:text('report_id').primaryKey().references(()=>reports.id,{onDelete:'restrict'}),document:text('document').notNull(),version:integer('version').notNull(),mutationId:text('mutation_id').notNull(),updatedAt:text('updated_at').notNull(),issuedFile:text('issued_file')
+});
+export const dossierFiles=sqliteTable('dossier_files',{
+ id:text('id').primaryKey(),reportId:text('report_id').notNull().references(()=>dossiers.reportId,{onDelete:'cascade'}),category:text('category').notNull(),name:text('name').notNull(),mime:text('mime').notNull(),size:integer('size').notNull(),metadata:text('metadata').notNull(),bytes:blob('bytes',{mode:'buffer'}),storageKey:text('storage_key'),createdAt:text('created_at').notNull()
+});
+export const dossierEvents=sqliteTable('dossier_events',{
+ id:integer('id').primaryKey({autoIncrement:true}),reportId:text('report_id').notNull().references(()=>dossiers.reportId,{onDelete:'cascade'}),operation:text('operation').notNull(),note:text('note').notNull(),recordedAt:text('recorded_at').notNull()
+});

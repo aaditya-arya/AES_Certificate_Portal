@@ -1,0 +1,4 @@
+.dossier-fields{border:0;margin:0;min-width:0}.dossier-fields legend{position:absolute;width:1px;height:1px;overflow:hidden}.dossier-resources{display:grid;gap:16px}.dossier-file{border:1px solid #ccd9e8;border-radius:8px;padding:16px;min-width:0;overflow-wrap:anywhere}.dossier-file p{margin:10px 0}.dossier-file small{display:block;color:#3b5875;margin-top:6px}.dossier-file .button{margin:4px 8px 4px 0}.document-context dd{overflow-wrap:anywhere}.dossier-file input[type=checkbox]{width:22px;height:22px;flex:none}#main-content>.card{margin-bottom:22px}#dossier-error:empty{display:none}
+
+.toast{left:50%;width:max-content;max-width:calc(100vw - 32px)}.toast>span{min-width:0;overflow-wrap:anywhere;white-space:normal}.toast>svg,.toast>.icon-button{flex-shrink:0}
+.library-page>.page-title,.card li{overflow-wrap:anywhere}.library-page>.page-title>div{min-width:0}

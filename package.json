@@ -14,7 +14,9 @@
     "test:sample": "node tests/node-browser.mjs",
     "start": "node --env-file-if-exists=.env.local server/index.js",
     "db:generate": "drizzle-kit generate",
-    "test:api": "node --test tests/api.test.mjs"
+    "test:api": "node --test tests/api.test.mjs",
+    "test:workflow": "node --test tests/dossiers.test.mjs && node tests/dossiers-browser.mjs && node tests/documents-browser.mjs",
+    "seed:workflow": "node scripts/seed-workflow.mjs"
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",

@@ -164,6 +164,7 @@ export function newReport() {
     activityDetails: defaultActivityDetails,
     calibration: [blankRow('calibration')],
     conclusion: defaultConclusion,
+    overallResult: '',
     pending: defaultPending,
     identification: defaultIdentification,
     nonconformities: defaultNonconformities,
@@ -370,6 +371,7 @@ export const fieldCatalog = [
   [2,'activityDetails','5.0 Details of activities carried out','Standard text from the original report'],
   [3,'conclusion','Conclusion','Inspection outcome'],[3,'pending','Pending activities','Work remaining or NIL'],[3,'identification','Identification of inspected items','Serial numbers markings identification or NIL'],
   [3,'nonconformities','Non-conformities / discrepancies','Inspection discrepancies or NIL'],[3,'enclosures','Enclosures','Supporting reports and calibration certificates'],
+  [3,'overallResult','Overall inspection result','Required when issuing an IR'],
   [5,'inspector','Inspector name','Inspected by sign-off'],[5,'inspectorDate','Inspector sign-off date','Date signed by inspector','date'],[5,'inspectorSignature','Inspector signature','Upload signature image'],
   [5,'reviewer','Reviewer name','Reviewed by sign-off'],[5,'reviewerDate','Reviewer sign-off date','Date signed by reviewer','date'],[5,'reviewerSignature','Reviewer signature','Upload signature image']
 ];

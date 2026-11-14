@@ -203,7 +203,7 @@ export async function generateWord(r) {
   const concTitle = el(doc, 'p');
   concTitle.append(run(doc, 'Conclusion: ', true));
   conclusionCell.append(concTitle);
-  for (const line of String(r.conclusion || '').split('\n')) {
+  for (const line of [r.overallResult&&`Overall inspection result: ${r.overallResult}`,r.conclusion].filter(Boolean).join('\n').split('\n')) {
     const p = el(doc, 'p');
     const pPr = el(doc, 'pPr');
     pPr.append(el(doc, 'pStyle', {val: 'ListParagraph'}), el(doc, 'ind', {left: '173'}));

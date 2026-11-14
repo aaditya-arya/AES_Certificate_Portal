@@ -302,7 +302,7 @@ export async function generatePDF(r) {
   );
 
   for(const [label,value,inline] of [
-    ['Conclusion:',r.conclusion,false],['Pending Activities:',r.pending,true],
+    ['Conclusion:',[r.overallResult&&`Overall inspection result: ${r.overallResult}`,r.conclusion].filter(Boolean).join('\n'),false],['Pending Activities:',r.pending,true],
     ['Identification of the Inspected Items:',r.identification,true],
     ['Non-Conformities raised / Discrepancies observed during Inspection:',r.nonconformities,true]
   ]){

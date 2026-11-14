@@ -100,3 +100,21 @@ Browser tests use isolated in-memory SQL databases. API tests check disk persist
 - `worker/index.js`, `scripts/build.mjs`: hosted adapter and artifact packaging.
 
 Word fills the cleaned original template and preserves section 5.0 XML. Direct PDF export follows the supplied reference's Letter page geometry, section order, tables, two-column photographs and sign-off. Repeating headers are drawn after pagination so table continuations retain branding. The bundled OFL-licensed Carlito font approximates the reference's Aptos typography; it is not an exact Microsoft Word rendering. The reference-data fixture has four pages, while added rows and long captions can require more. Original source documents in the parent workspace are unchanged.
+
+## Inspection dossier and reproducible workflow checks
+
+Open **Inspection details** in a report row or the editor. Master details come from the report. The dossier stores assignment information, eight groups of reference files, document/revision/approval/tag metadata, selected/all ZIP downloads, live linked-document statuses, and IR issue/cancellation history. Issue validates the complete report, overall result, inspector stamp and assignment; it retains the generated PDF and locks report/assignment edits. Cancellation requires a reason and keeps the prior PDF.
+
+Dossier storage uses `inspection_dossiers`, `dossier_files` and `dossier_events`. Local resource/PDF bytes are in SQLite; hosted bytes use R2 under `dossiers/`. Assignment changes increment both dossier and inspection versions. Use the dossier ETag for its mutations and reload the report before editing it. REST endpoints and schemas are at `/api/v1/openapi.json`; `/integration/` mirrors them with the configured Bearer API key.
+
+```powershell
+npm test
+npm run test:workflow
+npm run seed:workflow
+```
+
+`seed:workflow` creates three visible, fully filled **TEST ONLY** scenarios in the local database: complete drafts, open quality actions, and closed actions/release with issued IR. It includes extended rows, photographs, a visibly synthetic test stamp, all eight resource groups and all four linked modules. It issues the final IR through browser PDF generation. IDs/statuses are recorded in `data/workflow-test-manifest.json`; rerunning keeps the existing scenarios when their manifest is present. These records are local, not copied to the hosted database or GitHub.
+
+See [the workflow audit](docs/WORKFLOW_REVERSE_ENGINEERING.md) for observed Samsung behavior, AES choices and unverified external/role-based behavior. The application does not claim Samsung approval or role parity.
+
+IRC issue also requires an inspection result and files identified as **Signed packing list** and **Reporter stamp / signature**. Punch/NCR closure goes through **Request closure**, then **Record approved closure**. A pending request locks editing and can be cancelled with a reason. NCR requires its NCR file for closure requests. This records the review outcome; authenticated separation of inspector/reviewer roles remains an integration requirement.

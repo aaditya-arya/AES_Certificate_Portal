@@ -46,6 +46,7 @@ export function normalizeReport(input,id){
  if(!['automatic','manual'].includes(result.numberingMode))fail(422,'INVALID_NUMBERING','Select automatic or manual numbering.');
  if(result.numberingMode==='automatic'){Object.assign(result,numberingCodes(result));for(const key of ['clientCode','manufacturerCode','inspectorCode'])if(result[key]&&!/^[A-Z0-9]{1,12}$/.test(result[key]))fail(422,'INVALID_CODE','Use up to 12 letters or digits for each numbering code.');}
  if(input.id&&id&&input.id!==id)fail(422,'ID_MISMATCH','The report ID must match the URL.');
+ if(result.overallResult&&!['Accepted','Accepted with comments','Rejected'].includes(result.overallResult))fail(422,'INVALID_RESULT','Select a valid overall inspection result.');
  if(!['draft','ready'].includes(result.status))fail(422,'INVALID_STATUS','Status must be draft or ready.');
  if(!['template','custom'].includes(result.activityDetailsMode))fail(422,'INVALID_MODE','Activity text mode must be template or custom.');
  const pending=issues(result).filter(issue=>!(result.numberingMode==='automatic'&&!result.reportNo&&reportNumberBase(result)&&issue.message==='Enter the inspection visit report number.'));

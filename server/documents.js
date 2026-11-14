@@ -1,5 +1,6 @@
 import {ApiError,fail,validId} from './validation.js';
-import {newDocument,documentTypes,documentIssues,issueTypes,itemFields} from '../src/document-model.js';
+import {newDocument,newDocumentItem,documentTypes,documentIssues,issueTypes,itemFields,attachmentPurposes} from '../src/document-model.js';
+import {today} from '../src/model.js';
 import {parseDateToIso,location} from '../src/model.js';
 import {fromBase64,toBase64,toHex,ascii} from './binary.js';
 import {allocateNumber} from './numbering.js';
@@ -57,7 +58,7 @@ export function documentsRepository(db,bucket=null){
    }else{
     const stored=await db.get('SELECT id,name,mime,size FROM document_files WHERE id=? AND document_id=?',[item.id,record.id]);if(!stored||!previous)fail(422,'INVALID_ATTACHMENT','The referenced attachment does not belong to this document.');metadata=stored;
    }
-   metadata.caption=text(item.caption||'','Attachment description',10000);total+=metadata.size;record.attachments.push(metadata);
+   metadata.purpose=text(item.purpose||'supporting','File purpose',100);if(!Object.hasOwn(attachmentPurposes,metadata.purpose))fail(422,'INVALID_ATTACHMENT','Choose a valid file purpose.');metadata.caption=text(item.caption||'','Attachment description',10000);total+=metadata.size;record.attachments.push(metadata);
   }
   if(total>20*1024*1024)fail(422,'ATTACHMENTS_TOO_LARGE','All attached files together must be at most 20 MB.');
   if(new Set(record.attachments.map(item=>item.id)).size!==record.attachments.length)fail(422,'INVALID_ATTACHMENTS','An attachment can only appear once.');
@@ -72,6 +73,7 @@ export function documentsRepository(db,bucket=null){
   const collision=await db.get('SELECT id FROM inspection_documents WHERE type=? AND number=? AND id<>?',[record.type,record.number,id]);if(collision)fail(409,'NUMBER_EXISTS','That document number is already in use.');
   const values=[record.reportId,record.type,record.number,record.revision,record.status,JSON.stringify(record),JSON.stringify(context),version,mutation,previous?.created_at||now,now,id];
   const statements=[previous?sql('UPDATE inspection_documents SET report_id=?,type=?,number=?,revision=?,status=?,document=?,context=?,version=?,mutation_id=?,created_at=?,updated_at=? WHERE id=? AND version=?',[...values,previous.version]):sql('INSERT INTO inspection_documents(report_id,type,number,revision,status,document,context,version,mutation_id,created_at,updated_at,id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING',values)];
+  if(previous&&record.type==='punch'&&record.status==='open'){statements[0].sql+=" AND NOT EXISTS(SELECT 1 FROM inspection_documents WHERE type='punch' AND status IN ('open','closure_requested') AND id<>? AND upper(trim(json_extract(context,'$.project')))=? AND upper(trim(json_extract(context,'$.vendor')))=? AND upper(trim(json_extract(context,'$.purchaseOrder')))=?)";statements[0].params.push(id,...['project','vendor','purchaseOrder'].map(key=>String(context[key]||'').trim().toUpperCase()));}
   for(const item of files){const storageKey=bucket?`documents/${id}/${item.id}-${item.digest}`:null;if(bucket)await bucket.put(storageKey,item.bytes,{httpMetadata:{contentType:item.mime}});statements.push(sql('INSERT INTO document_files(id,document_id,name,mime,size,digest,bytes,storage_key) SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM inspection_documents WHERE id=? AND mutation_id=?)',[item.id,id,item.name,item.mime,item.size,item.digest,bucket?null:item.bytes,storageKey,id,mutation]));}
   statements.push(sql('INSERT INTO document_versions(document_id,version,document,context,operation,note,recorded_at) SELECT ?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM inspection_documents WHERE id=? AND mutation_id=?)',[id,version,JSON.stringify(record),JSON.stringify(context),operation,note,now,id,mutation]));
   statements.push(sql('INSERT INTO document_events(document_id,type,version,operation,updated_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM inspection_documents WHERE id=? AND mutation_id=?)',[id,record.type,version,operation,now,id,mutation]));
@@ -83,7 +85,7 @@ export function documentsRepository(db,bucket=null){
   const previous=id?await row(id):null;if(id&&!previous)fail(404,'NOT_FOUND','Document not found.');
   if((previous?.version||0)!==version)fail(409,'VERSION_CONFLICT','This document changed elsewhere. Reload it before saving.');
   if(!previous&&await db.get('SELECT sequence FROM document_events WHERE document_id=? LIMIT 1',[input?.id||'']))fail(409,'ID_RETIRED','This document ID was previously deleted. Create a new document.');
-  if(previous&&['issued','closed'].includes(previous.status))fail(409,'DOCUMENT_LOCKED','Revise or reopen the document before editing.');
+  if(previous&&['issued','closed','closure_requested'].includes(previous.status))fail(409,'DOCUMENT_LOCKED','Revise or reopen the document before editing.');
   if(id&&input?.id!==id)fail(422,'INVALID_ID','Document ID does not match the URL.');
   const normalized=await normalize(input,previous);return write(normalized.record,normalized.context,normalized.files,previous,previous?'saved':'created');
  }
@@ -93,11 +95,17 @@ export function documentsRepository(db,bucket=null){
   const record=JSON.parse(previous.document),issue=issueTypes.includes(record.type),note=text(input.note||'','Reason',2000),action=input.action;
   if(action==='issue'&&record.status==='draft'){
    const messages=documentIssues(record);if(messages.length)fail(422,'DOCUMENT_INCOMPLETE','Complete the required fields before issuing.',messages);
-   if(record.type==='irc'&&record.releaseDecision==='Released'&&(await db.get("SELECT count(*) AS n FROM inspection_documents WHERE report_id=? AND type IN ('punch','ncr') AND status='open'",[record.reportId])).n)fail(422,'OPEN_QUALITY_ITEMS','Resolve open Punch/NCR records or choose a conditional/non-release decision.');
+   if(record.type==='punch'){
+    const context=JSON.parse(previous.context);const existing=await db.get("SELECT id FROM inspection_documents WHERE type='punch' AND status IN ('open','closure_requested') AND id<>? AND upper(trim(json_extract(context,'$.project')))=? AND upper(trim(json_extract(context,'$.vendor')))=? AND upper(trim(json_extract(context,'$.purchaseOrder')))=? LIMIT 1",[id,...['project','vendor','purchaseOrder'].map(key=>String(context[key]||'').trim().toUpperCase())]);
+    if(existing)fail(409,'OPEN_PUNCH_EXISTS','An open Punch list already exists for this project, vendor and purchase order. Update or close it before opening another.');
+   }
+   if(record.type==='irc'&&record.releaseDecision==='Released'&&(await db.get("SELECT count(*) AS n FROM inspection_documents WHERE report_id=? AND type IN ('punch','ncr') AND status IN ('open','closure_requested')",[record.reportId])).n)fail(422,'OPEN_QUALITY_ITEMS','Resolve open Punch/NCR records or choose a conditional/non-release decision.');
    record.status=issue?'open':'issued';
-  }else if(action==='revise'&&!issue&&record.status==='issued'){record.revision=String(Number(record.revision)+1).padStart(2,'0');record.status='draft';}
+  }else if(action==='revise'&&!issue&&record.status==='issued'){record.revision=String(Number(record.revision)+1).padStart(2,'0');record.status='draft';if(record.type==='flash'){record.date=today();record.result='';for(const [key]of documentTypes.flash.fields)record[key]='';record.items=[newDocumentItem()];record.attachments=[];}}
   else if(action==='cancel-issue'&&!issue&&record.status==='issued'){if(!note.trim())fail(422,'REASON_REQUIRED','Enter a reason for cancelling the issue.');record.status='draft';}
-  else if(action==='close'&&issue&&record.status==='open'){const messages=documentIssues(record,true);if(messages.length)fail(422,'CLOSURE_INCOMPLETE','Complete the closure requirements.',messages);record.status='closed';}
+  else if(action==='request-close'&&issue&&record.status==='open'){const messages=documentIssues(record,true);if(messages.length)fail(422,'CLOSURE_INCOMPLETE','Complete the closure requirements.',messages);record.status='closure_requested';}
+  else if(action==='close'&&issue&&record.status==='closure_requested'){const messages=documentIssues(record,true);if(messages.length)fail(422,'CLOSURE_INCOMPLETE','Complete the closure requirements.',messages);record.status='closed';}
+  else if(action==='cancel-close'&&issue&&record.status==='closure_requested'){if(!note.trim())fail(422,'REASON_REQUIRED','Enter a reason for cancelling the closure request.');record.status='open';}
   else if(action==='reopen'&&issue&&record.status==='closed'){if(!note.trim())fail(422,'REASON_REQUIRED','Enter a reason for reopening.');record.status='open';record.closedDate='';}
   else fail(409,'INVALID_TRANSITION','That action is not available for this document status.');
   return write(record,JSON.parse(previous.context),[],previous,action,note);

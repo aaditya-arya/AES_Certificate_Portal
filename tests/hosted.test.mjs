@@ -4,6 +4,7 @@ import {existsSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
 import {openDatabase} from '../server/sqlite.js';
 import {newReport} from '../src/model.js';
+import {fullReport,assignment} from './workflow-fixtures.mjs';
 import {newDocument} from '../src/document-model.js';
 test('hosted Worker serves the plain frontend and persists reports and images through SQL/R2 bindings',{skip:!existsSync('dist/server/index.js')},async()=>{
  const {default:worker}=await import('../dist/server/index.js'),db=openDatabase(':memory:'),objects=new Map();
@@ -22,5 +23,6 @@ test('hosted Worker serves the plain frontend and persists reports and images th
   assert.equal((await call(`/api/v1/reports/${report.id}`,{method:'DELETE',headers:{'If-Match':'"1"'}})).status,409);
   assert.equal((await call(`/api/v1/documents/${saved.id}`,{method:'DELETE',headers:{'If-Match':'"1"'}})).status,204);assert.equal(objects.size,1);
   assert.equal((await call(`/api/v1/reports/${report.id}`,{method:'DELETE',headers:{'If-Match':'"1"'}})).status,204);assert.equal(objects.size,0);
+  const complete=await fullReport('HOSTED-DOSSIER');assert.equal((await call('/api/v1/reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(complete)})).status,201);const path=`/api/v1/reports/${complete.id}/dossier`;await call(path);let d=(await(await call(path,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':'\"1\"'},body:JSON.stringify(assignment())})).json()).data;const pdf='data:application/pdf;base64,'+Buffer.from('%PDF-1.4 TEST ONLY').toString('base64');const issued=await call(path+'/issue',{method:'POST',headers:{'Content-Type':'application/json','If-Match':`\"${d.version}\"`},body:JSON.stringify({name:'TEST IR.pdf',data:pdf,reportVersion:d.reportVersion})});assert.equal(issued.status,200);d=(await issued.json()).data;assert.ok(d.issuedFile);assert.equal((await call(path+'/files/'+d.issuedFile)).status,200);assert.ok([...objects.keys()].some(k=>k.startsWith('dossiers/')));
  }finally{db.close();}
 });

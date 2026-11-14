@@ -1,6 +1,7 @@
 import {get} from 'idb-keyval';
 import {newReport,hydrateReport} from './model.js';
 export class RequestError extends Error{constructor(message,status,code){super(message);this.status=status;this.code=code;}}
+const issued=new Map();export const reportIssued=id=>!!issued.get(id);
 const versions=new Map();let writes=Promise.resolve();
 async function request(path,{method='GET',body,headers={}}={}){
  let response;try{response=await fetch(`/api/v1${path}`,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...headers},...(body?{body:JSON.stringify(body)}:{})});}catch{throw new RequestError('The server is unreachable. Keep this report open and retry saving.',0,'NETWORK_ERROR');}
@@ -10,7 +11,7 @@ async function request(path,{method='GET',body,headers={}}={}){
 }
 export async function listReports(filters={}){const search=new URLSearchParams(Object.entries(filters).filter(([,value])=>value!==''&&value!=null));return request(`/reports?${search}`);}
 export async function dashboard(){return (await request('/dashboard')).data;}
-export async function readReport(id){await writes.catch(()=>{});const {data}=await request(`/reports/${encodeURIComponent(id)}`);versions.set(id,data.version);return hydrateReport(data.report);}
+export async function readReport(id){await writes.catch(()=>{});const {data}=await request(`/reports/${encodeURIComponent(id)}`);versions.set(id,data.version);issued.set(id,data.issuedFile);return hydrateReport(data.report);}
 export function saveReport(report){
  const snapshot=structuredClone(report);
  const task=writes.catch(()=>{}).then(async()=>{
