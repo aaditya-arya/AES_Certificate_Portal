@@ -14,7 +14,7 @@ npm start
 
 Open http://127.0.0.1:3001. The SQL database is created automatically on first startup.
 
-For development, use `npm run dev`. This starts the Node API on port 3001 and the frontend on port 5173. `START_PORTAL.cmd` starts development mode. To use another frontend port, run `npm run dev -- --port 5174`.
+For development, use `npm run dev`. A content-based watcher restarts the API and Vite when server/shared-model code or SQL migrations change. It ignores file-notification noise; frontend-only changes still update through Vite. This starts the Node API on port 3001 and the frontend on port 5173. `START_PORTAL.cmd` starts development mode. To use another frontend port, run `npm run dev -- --port 5174`.
 
 ## Where data is stored
 
