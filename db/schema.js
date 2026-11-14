@@ -43,3 +43,7 @@ export const dossierFiles=sqliteTable('dossier_files',{
 export const dossierEvents=sqliteTable('dossier_events',{
  id:integer('id').primaryKey({autoIncrement:true}),reportId:text('report_id').notNull().references(()=>dossiers.reportId,{onDelete:'cascade'}),operation:text('operation').notNull(),note:text('note').notNull(),recordedAt:text('recorded_at').notNull()
 });
+// Keep retired references after report deletion so an old URL can never open a different report.
+export const reportLinks=sqliteTable('report_links',{
+ slug:text('slug').primaryKey(),reportId:text('report_id').notNull(),reportNo:text('report_no').notNull(),createdAt:text('created_at').notNull()
+},table=>[index('report_links_report_idx').on(table.reportId)]);

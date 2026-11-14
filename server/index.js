@@ -18,7 +18,7 @@ export function startServer({port=Number(process.env.PORT)||3001,host=process.en
     res.writeHead(result.status,Object.fromEntries(result.headers));if(result.body)Readable.fromWeb(result.body).pipe(res);else res.end();return;
    }
    if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}
-   const pathname=decodeURIComponent(url.pathname),file=resolve(root,`.${pathname==='/'?'/index.html':pathname}`);
+   const pathname=decodeURIComponent(url.pathname),file=resolve(root,`.${pathname==='/'||/^\/reports\/[A-Za-z0-9_-]{1,300}\/?$/.test(pathname)?'/index.html':pathname}`);
    if(file!==root&&!file.startsWith(`${root}${sep}`)){res.writeHead(403);res.end();return;}
    let bytes;try{const info=await stat(file);if(!info.isFile())throw Error('not file');bytes=await readFile(file);}catch{res.writeHead(404);res.end('Not found. Run npm run build before npm start.');return;}
    res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Cache-Control':pathname.startsWith('/assets/')?'public, max-age=31536000, immutable':'no-cache','X-Content-Type-Options':'nosniff'});res.end(req.method==='HEAD'?undefined:bytes);

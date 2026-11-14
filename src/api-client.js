@@ -2,6 +2,7 @@ import {get} from 'idb-keyval';
 import {newReport,hydrateReport} from './model.js';
 export class RequestError extends Error{constructor(message,status,code){super(message);this.status=status;this.code=code;}}
 const issued=new Map();export const reportIssued=id=>!!issued.get(id);
+const paths=new Map();export const reportPath=id=>paths.get(id)||'';
 const versions=new Map();let writes=Promise.resolve();
 async function request(path,{method='GET',body,headers={}}={}){
  let response;try{response=await fetch(`/api/v1${path}`,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...headers},...(body?{body:JSON.stringify(body)}:{})});}catch{throw new RequestError('The server is unreachable. Keep this report open and retry saving.',0,'NETWORK_ERROR');}
@@ -11,11 +12,11 @@ async function request(path,{method='GET',body,headers={}}={}){
 }
 export async function listReports(filters={}){const search=new URLSearchParams(Object.entries(filters).filter(([,value])=>value!==''&&value!=null));return request(`/reports?${search}`);}
 export async function dashboard(){return (await request('/dashboard')).data;}
-export async function readReport(id){await writes.catch(()=>{});const {data}=await request(`/reports/${encodeURIComponent(id)}`);versions.set(id,data.version);issued.set(id,data.issuedFile);return hydrateReport(data.report);}
+export async function readReport(id){await writes.catch(()=>{});const {data}=await request(`/reports/${encodeURIComponent(id)}`);versions.set(id,data.version);issued.set(id,data.issuedFile);if(data.reportLink)paths.set(id,data.reportLink.path);return hydrateReport(data.report);}
 export function saveReport(report){
  const snapshot=structuredClone(report);
  const task=writes.catch(()=>{}).then(async()=>{
-  const version=versions.get(snapshot.id),result=await request(version?`/reports/${snapshot.id}`:'/reports',{method:version?'PUT':'POST',body:snapshot,headers:version?{'If-Match':`"${version}"`}:{}});versions.set(snapshot.id,result.data.version);return result.data;
+  const version=versions.get(snapshot.id),result=await request(version?`/reports/${snapshot.id}`:'/reports',{method:version?'PUT':'POST',body:snapshot,headers:version?{'If-Match':`"${version}"`}:{}});versions.set(snapshot.id,result.data.version);if(result.data.reportLink)paths.set(snapshot.id,result.data.reportLink.path);return result.data;
  });writes=task;return task;
 }
 export async function deleteReport(id,version){await writes.catch(()=>{});await request(`/reports/${id}`,{method:'DELETE',headers:{'If-Match':`"${versions.get(id)||version}"`}});versions.delete(id);}
@@ -29,3 +30,6 @@ export async function migrateBrowserReports(){
  localStorage.setItem('aes-sql-migration-v1','done');return imported;
 }
 export async function exportJson(id){return request(`/reports/${id}/export`);}
+
+export async function readReportLink(slug){const {data}=await request(`/report-links/${encodeURIComponent(slug)}`);versions.set(data.report.id,data.version);issued.set(data.report.id,data.issuedFile);if(data.reportLink)paths.set(data.report.id,data.reportLink.path);return hydrateReport(data.report);}
+export async function getReportLink(id){const {data}=await request(`/reports/${id}/link`);paths.set(id,data.path);return data;}

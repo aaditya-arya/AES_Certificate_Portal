@@ -118,3 +118,19 @@ npm run seed:workflow
 See [the workflow audit](docs/WORKFLOW_REVERSE_ENGINEERING.md) for observed Samsung behavior, AES choices and unverified external/role-based behavior. The application does not claim Samsung approval or role parity.
 
 IRC issue also requires an inspection result and files identified as **Signed packing list** and **Reporter stamp / signature**. Punch/NCR closure goes through **Request closure**, then **Record approved closure**. A pending request locks editing and can be cancelled with a reason. NCR requires its NCR file for closure requests. This records the review outcome; authenticated separation of inspector/reviewer roles remains an integration requirement.
+
+## Unique report URLs and engineer-filled activities
+
+Every saved, numbered report returns `data.reportLink` with `slug`, `path`, `url` and `reportNo`. The register and editor have **Copy link** / **Copy report link** buttons. A URL such as `/reports/AESPL-IACL-BEPL-IR-AS-2611-0701` opens that inspection directly and survives reload. The phone app can use the URL without implementing the form itself.
+
+- `GET /api/v1/reports/{id}/link` returns the current URL; it returns 422 until a report number exists.
+- `GET /api/v1/report-links/{slug}` resolves the complete report with its version for editing through the standard reports API.
+- The corresponding `/api/v1/integration/...` routes require the configured Bearer API key.
+- Correcting a number creates a new canonical URL while retaining older aliases for the same inspection. Legacy/manual number collisions receive a disambiguating suffix. Deleted links return 410 and are never reassigned.
+- Link records are in `report_links` in local SQLite / hosted D1. The URL identifies the inspection; it is not a bearer permission or engineer identity. Existing private portal access is preserved.
+
+Engineer authentication/assignment is deferred by request. Before enabling individual engineer access, enforce server-side ownership on report reads/writes, link resolution, files, dossier and linked-document APIs. Derive the engineer identity from verified authentication. Do not grant access based solely on a report number, URL, or an owner ID supplied by the caller. A shared integration API key identifies an integration, not an individual engineer.
+
+Section 5.0 is an editable, automatically growing textarea. New reports start empty with a short example placeholder; placeholders never enter exports. Existing template/custom text is retained and becomes custom text when edited. Typed text saves and exports to Word/PDF, including long content across pages. The UI has no fixed height or maxlength; API activity text is bounded at 2,000,000 characters within the existing request-size limit.
+
+Run `node --test tests/report-links.test.mjs` and `node tests/report-links-browser.mjs` for collision/retirement, phone URLs, reload/back navigation, growing activities, preserved legacy text and long Word/PDF checks. `AES_BROWSER=firefox` selects Firefox for the browser suite.

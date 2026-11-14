@@ -36,6 +36,13 @@
       "when": 1794570034854,
       "tag": "0004_calm_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1794632326023,
+      "tag": "0005_sticky_lockjaw",
+      "breakpoints": true
     }
   ]
 }

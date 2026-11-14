@@ -36,7 +36,7 @@ export function normalizeReport(input,id){
    if(!result[key].length&&key!=='photos')result[key]=initial;
   }else if(typeof initial==='boolean'){if(typeof value!=='boolean')fail(422,'INVALID_FIELD',`${key} must be true or false.`);result[key]=value;}
   else if(key.endsWith('Signature')){const data=string(value,key,12000000);if(data)media.push({id:key,...image(data,key)});result[key]='';}
-  else{const text=string(value,key);result[key]=dateFields.has(key)?parseDateToIso(text)||text:text;}
+  else{const text=string(value,key,key==='activityDetails'?2000000:100000);result[key]=dateFields.has(key)?parseDateToIso(text)||text:text;}
  }
  result.id=id||input.id||result.id;if(!validId(result.id))fail(422,'INVALID_ID','Invalid report ID.');
  if(input.createdAt!==undefined){if(typeof input.createdAt!=='string'||!Number.isFinite(Date.parse(input.createdAt)))fail(422,'INVALID_FIELD','createdAt must be an ISO date-time.');result.createdAt=new Date(input.createdAt).toISOString();}

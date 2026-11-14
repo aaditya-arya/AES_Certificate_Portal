@@ -60,6 +60,7 @@ function setCell(cell, value, bold = false) {
 }
 
 function fillActivityDetailsCell(doc, cell, text) {
+  for(const properties of children(cell.parentNode,'trPr'))for(const rule of [...children(properties,'cantSplit'),...children(properties,'trHeight')])rule.remove();
   for (const n of Array.from(cell.children)) if (n.localName !== 'tcPr') n.remove();
   const lines = String(text || '').split('\n');
   let afterQap = false;

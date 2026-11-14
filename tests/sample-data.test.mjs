@@ -9,7 +9,7 @@ test('fresh random scenarios use coherent dates, quantities and the original rep
  const early=randomizeSampleReport(reference,null,()=>0.1),late=randomizeSampleReport(reference,null,()=>0.9);
  assert.notEqual(early.client,late.client);assert.notEqual(early.project,late.project);assert.notEqual(early.reportNo,late.reportNo);assert.notEqual(early.calibration[0].identity,late.calibration[0].identity);
  for(const report of [early,late]){
-  assert.deepEqual(issues(report),[]);assert.equal(report.activityDetailsMode,'template');assert.equal(report.activityDetails,defaultActivityDetails);assert.equal(report.status,'draft');assert.deepEqual(report.completedSteps,[]);
+  assert.deepEqual(issues(report),[]);assert.equal(report.activityDetailsMode,'custom');assert.ok(report.activityDetails.includes('sample job'));assert.notEqual(report.activityDetails,defaultActivityDetails);assert.equal(report.status,'draft');assert.deepEqual(report.completedSteps,[]);
   assert.ok(report.vendorPODate<=report.aesPODate);assert.ok(report.aesPODate<report.notificationDate);assert.ok(report.notificationDate<report.inspectionDate);assert.ok(report.inspectionDate<=report.inspectorDate);assert.ok(report.inspectorDate<=report.reviewerDate);assert.ok(report.reviewerDate<=report.reportDate);
   for(const row of report.equipment){assert.ok(parseInt(row.poQty)>=parseInt(row.offeredQty));assert.ok(parseInt(row.offeredQty)>=parseInt(row.inspectedQty));assert.ok(parseInt(row.inspectedQty)>0);}
   for(const row of report.calibration){assert.ok(row.date<report.inspectionDate);assert.ok(row.due>report.inspectorDate);}

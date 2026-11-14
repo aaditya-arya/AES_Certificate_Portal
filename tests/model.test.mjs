@@ -26,7 +26,7 @@ test('typed and calendar dates normalize only when the real calendar date exists
  const r=newReport();r.reportDate='31.02.2026';assert.ok(issues(r).some(x=>x.path==='reportDate'));
 });
 test('default text does not complete an unreviewed step, and an invalidated step loses completion',()=>{
- const r=newReport();assert.equal(progress(r),0);assert.equal(stepDone(r,2),false);r.completedSteps=[2,3,4];assert.equal(progress(r),43);assert.equal(stepDone(r,4),true,'Photographs are optional, but their step is reviewed explicitly');r.conclusion='';assert.equal(stepDone(r,3),false);assert.equal(progress(r),29);
+ const r=newReport();assert.equal(progress(r),0);assert.equal(stepDone(r,2),false);r.completedSteps=[2,3,4];assert.equal(progress(r),29);assert.equal(stepDone(r,4),true,'Photographs are optional, but their step is reviewed explicitly');r.conclusion='';assert.equal(stepDone(r,3),false);assert.equal(progress(r),14);
 });
 test('field search finds labels and values in hidden steps, tables and photographs',()=>{
  const r=newReport();r.documents[0].number='DOC-UNIQUE-987';r.photos=[{id:'p1',caption:'Transformer clearance side view',name:'inspection.jpg'}];r.reviewer='Unique Reviewer';
@@ -35,7 +35,7 @@ test('field search finds labels and values in hidden steps, tables and photograp
 test('legacy reports retain their custom activity text and data during hydration',()=>{
  const raw={...newReport(),activityDetails:'Existing inspection findings',client:'Legacy client'};delete raw.activityDetailsMode;delete raw.completedSteps;
  const r=hydrateReport(raw);assert.equal(r.client,'Legacy client');assert.equal(r.activityDetailsMode,'custom');assert.equal(activityDetailsText(r),'Existing inspection findings');assert.equal(progress(r),0);
- const fresh=newReport();assert.equal(activityDetailsText(fresh),defaultActivityDetails);assert.ok(defaultActivityDetails.includes('As per QAP S. No. B 4.4:'));
+ const fresh=newReport();assert.equal(activityDetailsText(fresh),'');assert.equal(fresh.activityDetailsMode,'custom');assert.equal(activityDetailsText(hydrateReport({...fresh,activityDetailsMode:'template',activityDetails:defaultActivityDetails})),defaultActivityDetails);assert.ok(defaultActivityDetails.includes('As per QAP S. No. B 4.4:'));
 });
 
 test('a legacy Ready report with invalid data returns to draft without losing its values',()=>{

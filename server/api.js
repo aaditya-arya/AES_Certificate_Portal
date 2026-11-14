@@ -1,3 +1,4 @@
+import {ensureReportLink,absoluteReportLink} from './report-links.js';
 import {ApiError,fail,normalizeReport,validId} from './validation.js';
 import {repository} from './repository.js';
 import {getOpenapi} from './openapi.js';
@@ -26,26 +27,28 @@ export async function handleApi(request,db,{bucket=null,apiKey='',allowedOrigins
   }
   const dossierResponse=await handleDossiers({request,path,db,bucket,cors,json,expected,body});if(dossierResponse)return dossierResponse;
   const documentResponse=await handleDocuments({request,path,db,bucket,cors,json,expected,body});if(documentResponse)return documentResponse;
-  const store=repository(db,bucket),method=request.method;
+  const store=repository(db,bucket),method=request.method;const reportResponse=data=>({...data,reportLink:absoluteReportLink(data.reportLink,request.url)});
+  const linkRoute=/^\/api\/v1\/report-links\/([A-Za-z0-9_-]{1,300})$/.exec(path);if(linkRoute&&method==='GET'){const mapping=await db.get('SELECT report_id FROM report_links WHERE slug=?',[linkRoute[1]]);if(!mapping)fail(404,'LINK_NOT_FOUND','This report link does not exist.');const data=await store.detail(mapping.report_id);if(!data)fail(410,'REPORT_REMOVED','The report for this link has been removed.');return json({data:reportResponse(data)},200,{...cors,ETag:`\"${data.version}\"`});}
   if(path==='/api/v1/health'&&method==='GET'){await db.get('SELECT 1 AS ok');return json({data:{status:'ok',storage:db.kind||'d1',apiVersion:'1'}},200,cors);}
   if(path==='/api/v1/openapi.json'&&method==='GET')return json(getOpenapi(),200,cors);
   if(path==='/api/v1/dashboard'&&method==='GET')return json({data:await store.dashboard()},200,cors);
   if(path==='/api/v1/changes'&&method==='GET'){
    const after=Math.max(0,Number(url.searchParams.get('after'))||0),data=await store.changes(after,Number(url.searchParams.get('limit'))||100);return json({data,meta:{nextAfter:data.at(-1)?.sequence||after}},200,cors);
   }
-  if(path==='/api/v1/reports'&&method==='GET'){for(const name of ['limit','offset'])if(url.searchParams.has(name)){const number=Number(url.searchParams.get(name));if(!Number.isSafeInteger(number)||number<(name==='limit'?1:0)||(name==='limit'&&number>100))fail(400,'INVALID_PAGINATION','Use limit 1–100 and a non-negative integer offset.');}const {items,...meta}=await store.list(url.searchParams);return json({data:items,meta},200,cors);}
+  if(path==='/api/v1/reports'&&method==='GET'){for(const name of ['limit','offset'])if(url.searchParams.has(name)){const number=Number(url.searchParams.get(name));if(!Number.isSafeInteger(number)||number<(name==='limit'?1:0)||(name==='limit'&&number>100))fail(400,'INVALID_PAGINATION','Use limit 1–100 and a non-negative integer offset.');}const {items,...meta}=await store.list(url.searchParams);return json({data:items.map(reportResponse),meta},200,cors);}
   if(path==='/api/v1/reports'&&method==='POST'){
-   const input=await body(request),normalized=normalizeReport(input),saved=await store.save(normalized,0);return json({data:saved},201,{...cors,ETag:`"${saved.version}"`,Location:`/api/v1/reports/${saved.id}`});
+   const input=await body(request),normalized=normalizeReport(input),saved=await store.save(normalized,0);return json({data:reportResponse(saved)},201,{...cors,ETag:`"${saved.version}"`,Location:`/api/v1/reports/${saved.id}`});
   }
-  const route=/^\/api\/v1\/reports\/([^/]+)(?:\/(export|media)(?:\/([^/]+))?)?$/.exec(path);
+  const route=/^\/api\/v1\/reports\/([^/]+)(?:\/(export|media|link)(?:\/([^/]+))?)?$/.exec(path);
   if(route){const id=decodeURIComponent(route[1]);if(!validId(id))fail(400,'INVALID_ID','Invalid report ID.');
+   if(route[2]==='link'&&method==='GET'){const row=await db.get('SELECT report_no FROM reports WHERE id=?',[id]);if(!row)fail(404,'NOT_FOUND','Report not found.');const link=await ensureReportLink(db,id,row.report_no);if(!link)fail(422,'REPORT_UNNUMBERED','Enter the inspection visit report number or complete automatic numbering details first.');return json({data:absoluteReportLink(link,request.url)},200,cors);}
    if(route[2]==='media'&&method==='GET'){
     const media=await store.getMedia(id,decodeURIComponent(route[3]||''));if(!media)fail(404,'NOT_FOUND','Image not found.');return new Response(media.bytes,{headers:{...cors,'Content-Type':media.mime,'Cache-Control':'private, max-age=300','X-Content-Type-Options':'nosniff'}});
    }
    if(method==='GET'&&(!route[2]||route[2]==='export')){
-    const data=await store.detail(id);if(!data)fail(404,'NOT_FOUND','Report not found.');return json({schemaVersion:'1.0',data},200,{...cors,ETag:`"${data.version}"`,...(route[2]?{'Content-Disposition':`attachment; filename="AES-${id}.json"`}:{})});
+    const data=await store.detail(id);if(!data)fail(404,'NOT_FOUND','Report not found.');return json({schemaVersion:'1.0',data:reportResponse(data)},200,{...cors,ETag:`"${data.version}"`,...(route[2]?{'Content-Disposition':`attachment; filename="AES-${id}.json"`}:{})});
    }
-   if(!route[2]&&method==='PUT'){const version=expected(request);if(version<1)fail(400,'INVALID_VERSION','Use POST to create a new report.');const saved=await store.save(normalizeReport(await body(request),id),version);return json({data:saved},200,{...cors,ETag:`"${saved.version}"`});}
+   if(!route[2]&&method==='PUT'){const version=expected(request);if(version<1)fail(400,'INVALID_VERSION','Use POST to create a new report.');const saved=await store.save(normalizeReport(await body(request),id),version);return json({data:reportResponse(saved)},200,{...cors,ETag:`"${saved.version}"`});}
    if(!route[2]&&method==='DELETE'){await store.remove(id,expected(request));return new Response(null,{status:204,headers:cors});}
   }
   fail(404,'NOT_FOUND','API route not found.');

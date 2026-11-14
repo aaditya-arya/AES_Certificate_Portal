@@ -62,3 +62,11 @@ On 14 November the browser's service configuration and the three referenced stat
 AES now provides file-purpose metadata, IRC result/packing-list/reporter-evidence issue checks, NCR item/title fields, and `open ? closure_requested ? closed` transitions. Pending closure locks editing; cancelling the request requires a reason. The final action is labelled **Record approved closure**: it records a review outcome in the shared private workspace and does not claim a separately authenticated approver. Incomplete AES drafts remain savable; title/item checks run before opening the NCR rather than blocking draft capture.
 
 Tests explicitly reject missing IRC evidence, direct closure from Open, missing NCR-file evidence and reasonless request cancellation. Requested closure remains an outstanding quality record and blocks unconditional release. Current released test scenarios include a labelled synthetic packing-list PDF, NCR PDF and reporter stamp.
+
+## User-directed change: report URLs and editable activities
+
+On 14 November the user changed the earlier fixed Section 5.0 requirement. New reports now have an empty growing activity field with a brief example placeholder. Existing text is preserved; engineer edits are saved as custom content and appear in Word/PDF. The original Word XML remains untouched for an unedited legacy template report.
+
+Each numbered inspection now has a durable URL derived from its AES reference. The API exposes it for the unspecified phone application, with duplicate/manual-reference disambiguation and permanent retirement of deleted aliases. Old aliases continue to identify the same inspection after number corrections.
+
+The user explicitly deferred engineer authentication/access handling, while requiring eventual isolation between engineers. Unique URLs are identifiers, not ownership checks. Preserve existing private access. Future integration must enforce authenticated assignment server-side on all corresponding data and file routes before enabling individual engineer access. Do not interpret the existence of a unique link as completed engineer isolation.

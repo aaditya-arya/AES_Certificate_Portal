@@ -1,3 +1,4 @@
+import {ensureReportLink} from './report-links.js';
 import {toBase64,toHex} from './binary.js';
 import {ApiError,workflow} from './validation.js';
 import {narrative,location,requester,endDateDisplay,parseDateToIso} from '../src/model.js';
@@ -22,7 +23,7 @@ export function repository(db,bucket=null){
    if(media_id.startsWith('photo-')){const photo=report.photos.find(item=>`photo-${item.id}`===media_id);if(photo)photo.data=data;}else report[media_id]=data;
   }));
   const dossier=await db.get('SELECT issued_file FROM inspection_dossiers WHERE report_id=?',[id]);
-  return {issuedFile:dossier?.issued_file||null,report,version:row.version,workflow:row.workflow,updatedAt:row.updated_at,derived:{openingParagraph:narrative(report),inspectionLocation:location(report,true),requester:requester(report),inspectionEndDate:endDateDisplay(report.inspectionDate,report.duration)}};
+  return {reportLink:await ensureReportLink(db,id,report.reportNo),issuedFile:dossier?.issued_file||null,report,version:row.version,workflow:row.workflow,updatedAt:row.updated_at,derived:{openingParagraph:narrative(report),inspectionLocation:location(report,true),requester:requester(report),inspectionEndDate:endDateDisplay(report.inspectionDate,report.duration)}};
  }
  async function save(normalized,expectedVersion){
   const {report,media}=normalized,id=report.id,previous=await getRow(id),now=new Date().toISOString(),mutation=crypto.randomUUID(),version=expectedVersion+1;
@@ -46,7 +47,7 @@ export function repository(db,bucket=null){
   sql.push(statement('INSERT INTO report_changes(report_id,version,operation,updated_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM reports WHERE id=? AND mutation_id=?)',[id,version,expectedVersion?'updated':'created',now,id,mutation]));
   if(!bucket)sql.push(statement('DELETE FROM media_blobs WHERE digest NOT IN (SELECT digest FROM report_media)'));
   const result=await db.batch(sql);if(!result[0].changes){if(bucket&&!await getRow(id))await purgeMedia(id);throw new ApiError(409,'VERSION_CONFLICT','This report changed elsewhere. Reload it before saving.');}
-  return {id,version,workflow:workflow(report),updatedAt:now,createdAt:report.createdAt,reportNo:report.reportNo,numbering:{clientCode:report.clientCode,manufacturerCode:report.manufacturerCode,inspectorCode:report.inspectorCode,visitSequence:report.visitSequence}};
+  return {reportLink:await ensureReportLink(db,id,report.reportNo),id,version,workflow:workflow(report),updatedAt:now,createdAt:report.createdAt,reportNo:report.reportNo,numbering:{clientCode:report.clientCode,manufacturerCode:report.manufacturerCode,inspectorCode:report.inspectorCode,visitSequence:report.visitSequence}};
  }
  async function remove(id,version){
   if(await db.get('SELECT report_id FROM inspection_dossiers WHERE report_id=?',[id]))throw new ApiError(409,'LINKED_DOSSIER','This inspection has an assignment dossier and retained evidence. Keep the inspection for its audit history.');
@@ -75,7 +76,7 @@ export function repository(db,bucket=null){
   const clause=where.length?` WHERE ${where.join(' AND ')}`:'';const total=(await db.get(`SELECT count(*) AS n FROM reports${clause}`,params)).n;
   const limit=Math.min(100,Math.max(1,Number(search.get('limit'))||50)),offset=Math.max(0,Number(search.get('offset'))||0);
   const rows=await db.all(`SELECT id,version,workflow,report_no,client,project,inspection_date,status,created_at,updated_at,(SELECT json_extract(inspection_dossiers.document,'$.assignmentNo') FROM inspection_dossiers WHERE report_id=reports.id) AS assignment_no,json_extract(document,'$.manufacturer') AS manufacturer,json_extract(document,'$.stages') AS stages FROM reports${clause} ORDER BY updated_at DESC,id LIMIT ? OFFSET ?`,[...params,limit,offset]);
-  return {items:rows.map(row=>({id:row.id,version:row.version,workflow:row.workflow,reportNo:row.report_no,client:row.client,project:row.project,manufacturer:row.manufacturer,assignmentNo:row.assignment_no||'',inspectionDate:row.inspection_date,status:row.status,stages:JSON.parse(row.stages||'[]'),createdAt:row.created_at,updatedAt:row.updated_at})),total,limit,offset};
+  return {items:await Promise.all(rows.map(async row=>({reportLink:await ensureReportLink(db,row.id,row.report_no),id:row.id,version:row.version,workflow:row.workflow,reportNo:row.report_no,client:row.client,project:row.project,manufacturer:row.manufacturer,assignmentNo:row.assignment_no||'',inspectionDate:row.inspection_date,status:row.status,stages:JSON.parse(row.stages||'[]'),createdAt:row.created_at,updatedAt:row.updated_at}))),total,limit,offset};
  }
  async function dashboard(){const rows=await db.all('SELECT workflow,count(*) AS count FROM reports GROUP BY workflow');const counts={completed:0,draft:0,remaining:0,total:0};for(const row of rows){counts[row.workflow]=row.count;counts.total+=row.count;}return counts;}
  async function changes(after=0,limit=100){return db.all('SELECT sequence,report_id AS reportId,version,operation,updated_at AS updatedAt FROM report_changes WHERE sequence>? ORDER BY sequence LIMIT ?',[after,Math.min(500,limit)]);}

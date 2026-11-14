@@ -2,3 +2,5 @@
 
 .toast{left:50%;width:max-content;max-width:calc(100vw - 32px)}.toast>span{min-width:0;overflow-wrap:anywhere;white-space:normal}.toast>svg,.toast>.icon-button{flex-shrink:0}
 .library-page>.page-title,.card li{overflow-wrap:anywhere}.library-page>.page-title>div{min-width:0}
+
+.activity-editor .report-textarea{min-height:240px;overflow:visible}.activity-editor .textarea-mirror{position:relative;inset:auto;height:auto;min-height:240px;overflow:visible;grid-area:1/1;white-space:pre-wrap;overflow-wrap:anywhere}.activity-editor .report-textarea>textarea{position:absolute;inset:0;height:100%;min-height:100%;resize:none;overflow:hidden;grid-area:1/1}.activity-editor .textarea-mirror,.activity-editor .report-textarea>textarea{font-size:18px;line-height:1.75;padding:16px}.report-link-output{width:100%;min-height:52px;font-size:17px}
