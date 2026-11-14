@@ -8,8 +8,12 @@ export default {async fetch(request,env){
   return handleApi(request,db,{bucket:env.BUCKET,apiKey:env.API_KEY||'',allowedOrigins:(env.ALLOWED_ORIGINS||'').split(',').filter(Boolean)});
  }
  if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405});
- const path=url.pathname==='/'||/^\/reports\/[A-Za-z0-9_-]{1,300}\/?$/.test(url.pathname)?'/index.html':decodeURIComponent(url.pathname),asset=assets[path];
+ const reportPage=/^\/reports\/[A-Za-z0-9_-]{1,300}\/?$/.test(url.pathname);
+ const path=url.pathname==='/'||reportPage?'/index.html':decodeURIComponent(url.pathname),asset=assets[path];
  if(!asset)return new Response('Not found',{status:404});
  const bytes=Uint8Array.from(atob(asset[1]),character=>character.charCodeAt(0));
+ // SPA fallbacks pass through the dynamic hosting proxy rather than its static-file path.
+ // Send decoded HTML there so the proxy can compress it exactly once.
+ if(reportPage){const html=new Response(bytes).body.pipeThrough(new DecompressionStream('gzip'));return new Response(request.method==='HEAD'?null:html,{headers:{'Content-Type':asset[0],'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});}
  return new Response(request.method==='HEAD'?null:bytes,{headers:{'Content-Type':asset[0],'Content-Encoding':'gzip','Cache-Control':path.startsWith('/assets/')?'public, max-age=31536000, immutable':'no-cache','X-Content-Type-Options':'nosniff'}});
 }};
